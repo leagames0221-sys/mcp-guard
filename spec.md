@@ -48,6 +48,7 @@
 - **AC-5**: real-world fixture (公開 MCP server example) で TP/FP rate measured + documented
 - **AC-6**: SARIF output が GitHub code scanning UI で literal 表示確認
 - **AC-7**: tier-reviewer subagent 経由 independent verify PASS (Writer/Reviewer pattern)
+- **AC-8** (PUBLIC 化 pre-flip task): git history sweep (git-filter-repo or BFG) で `.claude/.security_telemetry.jsonl` (commit `531203a` に literal 残存) を history から完全除去、 force push 経由で main 書き換え。 PUBLIC 化前 mandatory、 user 直命 gate 必須 (destructive op)
 
 ## 後続 (Phase β、 別 repo `sbom-pilot`)
 
