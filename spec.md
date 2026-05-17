@@ -13,19 +13,29 @@
 ## 非機能要件
 
 - **性能**: 中規模 MCP config (50 server) を 60s 以内 scan
-- **セキュリティ**:
+- **セキュリティ** (operational constraints):
   - 攻撃 payload は repo 内に sanitize + license-noted のみ
   - scanner 自身が脆弱化しないよう pnpm-audit + dependency-review CI 強制
-  - 取り込む外部 OSS は D-PRIOR-ART-SECURITY-GATE 通過済のみ
+  - 取り込む外部 OSS は内部 prior-art security gate 通過済のみ (Scorecard ≥ 7 + signed release + dep tree audit + user 承認)
+  - supply chain attack 防御層厳守 (Shai-Hulud worm / s1ngularity 級の最終防衛線)
+  - `npm install` timing = Phase 1 Discovery 完了後 1 回のみ (lockfile commit と同時、 不用意な install 禁止)
+- **コスト制約** (★ 必須):
+  - **クレカ要求 external service 採用 literal 禁止** (Cloudflare Pages / Workers / GitHub Actions free tier 等 クレカ不要 service のみ)
+  - **外部 LLM paid API auto-call literal 禁止** (Anthropic / OpenAI 等 は env-var-gated optional のみ active、 user 明示時のみ)
+  - GitHub Actions 月 2,000 分 free tier 内で全 CI 完走
+- **LLM stack**:
+  - **default = Ollama local** (consumer laptop で完走、 model = qwen2.5 系 / llama3.x 系 推奨)
+  - env-var-gated swap path: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` 経由で paid API optional (user 明示時のみ)
+  - mock mode (LLM 不使用、 pure static analysis のみ) を default fallback として常時 available
 - **互換性**: Node.js 20 LTS 以上、 macOS / Linux / Windows 三 platform CI
-- **規模**: 個人開発者 / SMB pipeline、 1 dev machine / 1 GitHub Actions runner で完走 (D-CONSUMER-HW)
+- **規模**: 個人開発者 / SMB pipeline、 1 dev machine / 1 GitHub Actions runner で完走 (consumer hardware 完走前提)
 - **license**: MIT (依存に GPL 系混入禁止、 dependency-review CI で block)
 
 ## 依存
 
 - 外部 service: なし (default、 完全 local 実行)
-- 外部 LLM API: optional (OpenAI / Anthropic / local Ollama、 env-var-gated swap path)
-- 他 PJ 連携: なし (Phase α は独立、 craftstack 内に integration ADR の cross-link は別 PR 化)
+- 外部 LLM API: optional (env-var-gated swap path、 default = local Ollama or mock mode)
+- 他 PJ 連携: なし (Phase α は独立、 後続 integration の cross-link は別 PR 化)
 
 ## 完了条件 (Phase α ★★★ acceptance criteria)
 

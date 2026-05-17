@@ -46,13 +46,19 @@ Tier 1 default を継承 + 下記 addition:
 - 実 MCP server credential / API key literal 配置禁止
 - Channel B 順守: 内部 infra 用語 / 内部 module 名 commit 禁止 (pre-commit hook で literal block)
 - 受託案件 hint (顧客名 / 商談 evidence) literal 禁止
+- **クレカ要求 external service 採用 literal 禁止** (Cloudflare free tier / GitHub Actions free tier 等 クレカ不要 service のみ)
+- **paid LLM API (Anthropic / OpenAI 等) auto-call literal 禁止** (env-var-gated optional、 user 明示時のみ active)
+- **`npm install` 不用意実行禁止** (Phase 1 Discovery 完了後 1 回のみ、 lockfile commit と同時)
 
 ## PJ 固有 required
 
 - 全 commit に `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` (cross-PJ universal)
 - ADR-based 設計判断記録 (`docs/adr/NNNN-*.md`)
 - LICENSE = MIT 維持
-- D-PRIOR-ART-SECURITY-GATE: 外部 OSS adopt 前に user 承認 gate 必須
+- 外部 OSS adopt 前に security audit gate 必須 (Scorecard ≥ 7 + signed release + dep tree audit + user 承認)
+- **LLM 使用時 default = Ollama local** (consumer laptop 完走前提、 model = qwen2.5 系 / llama3.x 系)
+- **mock mode (LLM 不使用、 pure static analysis のみ) を default fallback として常時 available**
+- 全 CI workflow が GitHub Actions free tier (月 2,000 分) 内で完走することを literal verify
 
 ## 関連 doc
 

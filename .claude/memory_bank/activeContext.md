@@ -24,5 +24,8 @@ None.
 ## Recent decisions
 
 - ADR-0001: scope = defensive-first MCP scanner + LLM injection harness + remediation suggester (developer/SMB target)
+- ADR-0002: free tier only (no credit card), Ollama local LLM default, supply chain adoption gate (Scorecard ≥ 7 + signed release + dep tree audit + user approval)
 - Repo visibility: PRIVATE for initial commit, PUBLIC after Phase α ★★★ verify
 - License: MIT
+- Stack: TypeScript (Node.js 20 LTS + pnpm + vitest) — final lock in Discovery
+- LLM provider: Ollama default (qwen2.5:7b or llama3.1:8b), paid API env-var-gated optional, mock mode mandatory fallback
