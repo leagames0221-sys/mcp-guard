@@ -45,9 +45,13 @@ tmp/
 .claude/settings.local.json
 .claude/memory_bank/private_*
 
-# Auto-generated heartbeats from local tooling (never commit)
+# Auto-generated heartbeats and telemetry from local tooling (never commit)
 .claude/.*.heartbeat
 .claude/*.heartbeat
+.claude/.*.jsonl
+.claude/*.jsonl
+.claude/.*.log
+.claude/*.log
 
 # Logs
 *.log
