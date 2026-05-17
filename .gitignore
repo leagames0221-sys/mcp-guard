@@ -1,0 +1,54 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnpm-store/
+
+# Build artifacts
+dist/
+build/
+out/
+*.tsbuildinfo
+coverage/
+.nyc_output/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+credentials.json
+secrets.json
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test / temp
+_scratch/
+_scratch*/
+tmp/
+*.tmp
+*.bak
+
+# Local-only internal notes (channel B mask list, never commit)
+.claude/internal_notes.md
+.claude/settings.local.json
+.claude/memory_bank/private_*
+
+# Auto-generated heartbeats from local tooling (never commit)
+.claude/.*.heartbeat
+.claude/*.heartbeat
+
+# Logs
+*.log
+logs/

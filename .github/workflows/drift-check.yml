@@ -1,0 +1,48 @@
+name: drift-check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify required files exist
+        run: |
+          set -e
+          for f in README.md LICENSE CLAUDE.md spec.md .gitignore; do
+            if [ ! -f "$f" ]; then
+              echo "MISSING: $f"
+              exit 1
+            fi
+          done
+          echo "All required files present."
+
+      - name: Verify LICENSE is MIT
+        run: |
+          grep -q "MIT License" LICENSE || { echo "LICENSE is not MIT"; exit 1; }
+
+      - name: Verify internal_notes.md is NOT committed
+        run: |
+          if git ls-files --error-unmatch .claude/internal_notes.md 2>/dev/null; then
+            echo "VIOLATION: .claude/internal_notes.md was committed (must be gitignored)"
+            exit 1
+          fi
+          echo "internal_notes.md correctly excluded."
+
+      - name: Verify ADR directory exists
+        run: |
+          test -d docs/adr || { echo "MISSING: docs/adr/"; exit 1; }
+          adr_count=$(find docs/adr -name '*.md' -not -name 'README.md' | wc -l)
+          echo "ADR count: $adr_count"
