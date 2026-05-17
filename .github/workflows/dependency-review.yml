@@ -11,6 +11,10 @@ permissions:
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
+    # GitHub Advanced Security is required for dependency-review on PRIVATE repos
+    # (paid add-on). Skipped while repo is PRIVATE to keep within free tier.
+    # When the repo is flipped to PUBLIC (post Phase α verify), this job activates.
+    if: ${{ github.event.repository.visibility == 'public' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
