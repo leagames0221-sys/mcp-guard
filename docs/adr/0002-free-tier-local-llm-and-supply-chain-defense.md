@@ -24,9 +24,13 @@ These constraints must be reflected in stack choice, CI design, and dependency a
 
 ### 2. LLM stack
 
-- **Default provider**: Ollama running locally. Recommended models:
-  - `qwen2.5:7b` (general reasoning, ~5 GB RAM, fits consumer laptop)
-  - `llama3.1:8b` (alternative, comparable footprint)
+- **Default provider**: Ollama running locally.
+  - **Primary model (Phase 1)**: `gemma3:4b` (Google, ~3.3 GB on disk, fits 8 GB RAM laptops including CPU-only).
+    Already installed on the development machine — no additional download required.
+  - **Alternative models (optional, install on demand)**:
+    - `qwen2.5:7b` (general reasoning, ~5 GB RAM)
+    - `llama3.1:8b` (Meta, comparable footprint to qwen)
+  - Provider interface designed model-agnostic so swapping requires only env var change (`MCP_GUARD_OLLAMA_MODEL`).
 - **Mock mode**: every LLM-consuming code path MUST have a no-LLM fallback (pure static analysis or rule-based heuristic). Mock mode is the default for CI runs.
 - **Paid API swap**: implemented as a provider interface with env-var detection. When `ANTHROPIC_API_KEY` is set AND `MCP_GUARD_LLM_PROVIDER=anthropic` is explicit, swap kicks in. Default behavior never reaches this branch.
 

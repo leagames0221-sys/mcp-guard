@@ -28,4 +28,4 @@ None.
 - Repo visibility: PRIVATE for initial commit, PUBLIC after Phase α ★★★ verify
 - License: MIT
 - Stack: TypeScript (Node.js 20 LTS + pnpm + vitest) — final lock in Discovery
-- LLM provider: Ollama default (qwen2.5:7b or llama3.1:8b), paid API env-var-gated optional, mock mode mandatory fallback
+- LLM provider: Ollama default. Primary model = gemma3:4b (already installed locally, 3.3 GB). Alternatives = qwen2.5:7b / llama3.1:8b (install on demand). Paid API env-var-gated optional, mock mode mandatory fallback.
