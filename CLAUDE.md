@@ -22,15 +22,14 @@
 
 詳細 mask list: `.claude/internal_notes.md` (gitignored、 commit 不可)。
 
-## Stack (暫定、 Discovery で最終決定)
+## Stack (★★★ literal 確定)
 
-- **Language**: TypeScript (Node.js)
-  - 根拠: promptfoo (TypeScript, MIT, 95% fit) の decomposed prior art seed と MCP ecosystem (Node.js 中心) の整合
-- **Package manager**: pnpm (lockfile commit、 Tier 1 D-NPM-3GUARD 順守)
-- **Test**: vitest (default)
-- **CI**: GitHub Actions (test + npm-audit + dependency-review + drift-check)
-
-最終決定は `/spec-driven-workflow` Discovery stage の prior art audit 結果で gate。
+- **Language**: TypeScript (Node.js 20 LTS)
+  - 根拠: promptfoo (TypeScript, MIT, 95% fit) の decomposed prior art seed と MCP ecosystem (Node.js 中心) の整合 + Spec-Driven Workflow Stage 1 Discovery で literal lock
+- **Package manager**: pnpm (lockfile commit、 internal npm 3-layer guard 順守)
+- **Test**: vitest (ESM native, TS first-class, snapshot built-in)
+- **CI**: GitHub Actions (test + lint + audit + drift-check)
+- **LLM provider**: Ollama (default model = gemma3:4b)、 mock fallback default、 paid API env-var-gated optional
 
 ## PJ 固有 verify priority
 
