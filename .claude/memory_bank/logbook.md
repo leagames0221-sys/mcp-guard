@@ -1677,3 +1677,131 @@ back to template (already AC-003-3 conformant). `suggest`
 subcommand reads a prior `scan` report.json from disk, runs
 remediation, emits to stdout. Paid-API 6-layer defense unchanged:
 no auto-swap to paid provider, mock fallback default in CI.
+
+## 2026-05-19 — L6 T-29 LLM-enriched remediation + suggest subcommand (L6 fully drained)
+
+**Goal**: Layer the AC-003-2 LLM enrichment path onto the T-28
+template engine, plus implement the AC-003-4 `mcp-guard suggest
+<report.json>` subcommand body (commander wire-up deferred to T-30).
+
+**Changed**:
+
+- **T-29 part 1** (src/remediation/index.ts extension):
+  - `enrichRemediation(finding, provider, opts?)`: builds an
+    enrichment prompt with sanitized finding fields (id / ruleId /
+    severity / message / path — every field flows through T-07
+    sanitize before interpolation, defense-in-depth against an
+    adversary who plants ANSI/control bytes in a scanned MCP
+    config). Prompt budget: maxTokens=256 default cap, overridable
+    via opts. Composes with T-13b PaidApiBudget so per-finding
+    cost is bounded even when a paid provider is wired.
+  - Output post-processing: sanitize → trim → strip leading
+    "Concrete remediation:" echo → 1024-char hard cap. Empty /
+    whitespace-only output falls back to template (source remains
+    'template', AC-003-3 conformant). Provider.generate throw →
+    template fallback (no crash on budget exhaustion / network
+    blip / abort).
+  - `enrichFindings(findings, provider?, opts?)`: bulk gate.
+    Undefined provider → remediateFindings (all-template).
+    Unhealthy provider (or health() throws) → remediateFindings +
+    stderr warning "[remediation] provider \"<name>\" unhealthy —
+    falling back to template-only output". Healthy provider → per-
+    finding sequential enrichment; individual failures fall back
+    to their template body without aborting the bulk run.
+- **T-29 part 2** (src/cli/suggest.ts new):
+  - `runSuggest({reportPath, provider?, stdout?, stderr?, signal?})`
+    → `{remediations, usedLlm}`. Reads prior scan report.json from
+    disk via `readReport(path)` (separate exported function so
+    other consumers can validate without emitting). Error mapping
+    mirrors T-14 parser: ENOENT → IoError (74), JSON.parse fail →
+    DataFormatError (65), non-object root / missing results / bad
+    Finding shape → InvalidInputError (2). Severity field
+    validated against {low,medium,high,critical} enum literally.
+  - Output: `mcp-guard-suggest-output@1` schema-tagged JSON to
+    stdout with `{schema, usedLlm, count, remediations[]}`. Trailing
+    newline. Stderr reserved for enrichment warnings only — clean
+    separation between data and diagnostics so callers can pipe
+    stdout into jq / downstream tools.
+  - AC-003-4 invariant: suggest does NOT re-run detection. It
+    consumes the prior report's `results[]` verbatim, preserves
+    every ruleId, and only enriches `suggested_patch` text.
+- tests/unit/remediation-enrich.test.ts — 17 specs.
+  - Happy path (5): suggested_patch from provider, source='llm',
+    findingId/category/severity/references preserved from
+    template, default maxTokens=256, opts override, sanitized
+    fields in prompt.
+  - Fallback path (5): provider.generate throws → template,
+    empty/whitespace-only → template, "Concrete remediation:"
+    echo stripped, 1024-char cap, ANSI sanitization on enriched
+    body.
+  - Bulk path (7): undefined provider → all-template, unhealthy
+    → all-template + stderr warning, health() throws → all-
+    template + warning, healthy provider → per-finding enriched,
+    mixed outcomes (success/empty/success) preserve order +
+    correct source label per element, [] in → [] out for both
+    provider paths.
+- tests/unit/cli-suggest.test.ts — 13 specs.
+  - readReport error mapping (6): ENOENT → IoError, malformed
+    JSON → DataFormatError, non-object root → InvalidInputError,
+    missing results → InvalidInputError, bad Finding shape →
+    InvalidInputError, bad severity enum → InvalidInputError.
+  - readReport happy path (1): valid clean report (results: [])
+    parses to ScanReport with results=[].
+  - runSuggest (6): schema-marker output on stdout, multi-finding
+    order preservation, usedLlm=true when provider healthy +
+    produces output, fallback to all-template + stderr warning
+    when unhealthy, clean report → empty remediations + count=0,
+    AC-003-4 invariant (suggest does not re-run detection — input
+    ruleId preserved verbatim).
+
+**Implementation Notes propagation**:
+- The "Concrete remediation:" echo strip exists because consumer-
+  grade LLMs (gemma3:4b in particular) frequently re-emit the
+  prompt's trailer marker as their first line. Stripping it on
+  the engine side is cheaper than re-prompting and avoids fragile
+  prompt engineering. The match is anchored + case-insensitive so
+  "concrete remediation:" / "Concrete Remediation" both clear.
+- 1024-char hard cap on enriched output is a defensive measure
+  against verbose-by-default models. The template baseline is
+  always ≤ 300 chars (curated authoring discipline), so 1024
+  gives room for genuine elaboration without enabling report
+  bloat. If a downstream consumer needs longer, they can call the
+  provider directly with the original finding.
+- `enrichFindings` is sequential, not parallel. Same rationale as
+  the T-26 harness: bounds Ollama load on consumer hardware + keeps
+  stderr ordering monotonic. Future Phase β can parallelize if a
+  hosted paid provider is in play, but the contract stays the same.
+- suggest.ts intentionally lives in `src/cli/` even though no
+  commander wire-up exists yet — keeping CLI surface code in the
+  cli/ tree from day one makes T-30 a clean import rather than a
+  cross-directory refactor. The function takes injectable
+  stdout / stderr / provider so unit tests don't need commander
+  to assert behaviour.
+- Severity enum validation in parseReport intentionally rejects
+  unknown values (not just type-checks the field is a string).
+  This is the cheapest place to catch schema drift between scan
+  and suggest — if the scanner emits a new severity level, suggest
+  fails loudly rather than producing a malformed remediation.
+- Paid-API 6-layer defense unchanged through T-29:
+    1. Constructor gate (T-13) — unchanged.
+    2. Pre-flight reserve (T-13b) — composes with ENRICH_MAX_TOKENS.
+    3. Key non-leak (D2) — unchanged.
+    4. CI auto-call ban (AC-NF-3) — unchanged.
+    5. Default provider = mock — enrichFindings honors this when
+       provider is undefined (returns all-template, no call).
+    6. Credit-card-required service ZERO — unchanged.
+
+**Status**: L6 fully drained — T-28 + T-29 complete. F-003
+remediation engine feature-complete: template path + LLM enrichment
+path + suggest subcommand body all green. AC-003-1 through AC-003-4
+literally satisfied. 641 vitest specs PASS (611 prior + 30 new),
+tsc strict green. ADR count unchanged at 5. No new dependencies.
+
+**Next**: L7 CLI layer.
+  - T-30: src/cli/{index,scan,inject}.ts commander wire-up — 3
+    subcommands + descriptions + examples + --help + --version
+    from package.json (AC-005-1/2/4 + D-001).
+  - T-31: did-you-mean handler via commander's built-in
+    showSuggestionAfterError() (AC-005-3 ≤ 3 distance, D-001).
+  - T-32: src/cli/node-version-check.ts as first executable line
+    (AC-005-5 + AC-005-6 exit-code wire-up).
