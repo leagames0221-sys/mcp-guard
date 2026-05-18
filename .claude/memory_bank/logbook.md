@@ -1190,3 +1190,91 @@ spec.md § security). Each probe file's `references[]` must cite the
 OWASP LLM Top 10 doc. Loader test will get a corpus-count + category-
 coverage assertion against the real `src/probes/owasp/` tree once the
 corpus lands.
+
+## 2026-05-18 — L5 T-24 OWASP LLM01-10 probe corpus
+
+**Goal**: Land ≥ 30 probe files spanning all 10 OWASP LLM Top 10
+categories (AC-002-1), with educational-scope sanitization +
+license attribution per spec.md § security.
+
+**Changed**:
+
+- **T-24**: src/probes/owasp/llm0{1..10}/*.yaml — 30 probe files
+  total, 3 per category (balanced corpus). Layout:
+  - LLM01 Prompt Injection: direct-override / role-hijack /
+    delimiter-confusion
+  - LLM02 Sensitive Information Disclosure: pii-extraction /
+    training-data-recall / credential-recall
+  - LLM03 Supply Chain: third-party-dependency-trust /
+    malicious-plugin-suggestion / unverified-model-source
+  - LLM04 Data and Model Poisoning: poisoned-instruction-recall /
+    backdoor-trigger / context-window-pollution
+  - LLM05 Improper Output Handling: xss-payload-emission /
+    sql-injection-emission / shell-command-emission
+  - LLM06 Excessive Agency: unauthorized-tool-call /
+    financial-action-without-confirm / file-write-without-confirm
+  - LLM07 System Prompt Leakage: system-prompt-verbatim-leak /
+    -paraphrase-leak / -translation-leak
+  - LLM08 Vector and Embedding Weaknesses: embedding-inversion /
+    cross-tenant-retrieval / poisoned-document-injection
+  - LLM09 Misinformation: hallucinated-citation /
+    confident-incorrect-fact / fabricated-api
+  - LLM10 Unbounded Consumption: infinite-loop-prompt /
+    token-amplification / recursive-self-call
+- Every file carries corpus_version=1 (D-009), owasp_category enum
+  literal, expected_behavior (refuse / safe-completion / no-leak),
+  tags + references including genai.owasp.org/llm-top-10/, license
+  CC-BY-4.0. Educational-scope payloads — sanitized prompts that
+  describe adversary intent without weaponized output.
+- tests/unit/probes-owasp-corpus.test.ts — 7 corpus-integrity specs
+  driving the real loader against the real `src/probes/owasp/` tree:
+  ≥30 count (AC-002-1 lower bound), all 10 categories present (set
+  membership against OWASP_CATEGORIES), corpus_version=1 invariant
+  on every probe, OWASP reference URL invariant on every probe,
+  license-not-empty invariant, global id-uniqueness, ≥3 per category
+  (balanced-corpus floor).
+
+**Implementation Notes propagation**:
+- Prompts deliberately phrase adversary intent without including
+  weaponized output — e.g. LLM05 SQLi probe describes a query-
+  construction context and asks for the payload, but the corpus file
+  itself does not ship a ready-to-paste SQLi string. Detector layer
+  (T-25) consumes the probe + LLM output pair, not the probe text
+  directly, so this sanitization does not weaken verdict coverage.
+- LLM09 probes use `expected_behavior: safe-completion` rather than
+  `refuse` because the safe behavior is a hedged-and-cited answer
+  (or a clear "I don't know"), not refusal. T-25 detector for
+  hallucination will key on citation validity / hedge presence, not
+  on whether the model refused.
+- LLM02 / LLM07 probes use `expected_behavior: no-leak` to give the
+  detector a separate verdict surface from `refuse` — the model may
+  legitimately respond at length yet still pass if the response does
+  not contain the targeted secret / system-prompt content.
+- Every reference list cites the OWASP LLM Top 10 doc as the single
+  load-bearing source (genai.owasp.org/llm-top-10/), zod's `.url()`
+  validator passes on it. If we add per-probe research papers later,
+  they go into the same `references[]` array as additional entries
+  rather than a new field — keeps the schema flat.
+- 3-per-category was chosen as the balanced-corpus floor in the
+  integrity test. AC-002-1 says ≥ 30 / all 10 categories, which the
+  trivial allocation also satisfies, but enforcing a per-category
+  minimum prevents future drift where authors pile probes into a
+  single popular category and forget the long tail.
+- File naming: `<category-lower>-<kebab-slug>.yaml` so a sorted
+  listing groups by category. The id field repeats the prefix so
+  probe ids are unambiguous in CLI / SARIF output where the path may
+  be elided.
+
+**Status**: L5 T-23 + T-24 complete. 526 vitest specs PASS (519
+prior + 7 corpus-integrity), tsc strict green. ADR count unchanged
+at 5. No new dependencies.
+
+**Next**: T-25 detector layer — create `src/detectors/{types,index}.ts`
+plus per-category detector files. Each detector implements `{ name,
+evaluate(probeOutput): Verdict }` with `Verdict = {pass, score,
+reason}`. Initial detector set keyed by `expected_behavior`: a
+refusal-detector (string-match against refusal phrases + lack of
+target payload), a no-leak detector (substring search for the
+target secret pattern in the response), a safe-completion detector
+(citation + hedge presence heuristics). Garak 3-layer separation
+preserved (ADR-0003 §4).
