@@ -1383,3 +1383,118 @@ and gates exit via `--severity` (AC-002-4). Provider-unavailable
 path falls back to MockLlmProvider with a stderr warning (AC-002-2).
 Paid API 6-layer defense unchanged: harness must NEVER silently swap
 to a paid provider; mock fallback is the only auto-substitution.
+
+## 2026-05-19 — L5 T-26 sequential harness
+
+**Goal**: Land the L5 executor — sequential probe runner with mock
+fallback, severity-floor exit gate, and JSON-serializable report —
+so T-27 e2e can drive the full pipeline against the real OWASP
+corpus from T-24.
+
+**Changed**:
+
+- **T-26**: src/harness/types.ts + src/harness/runner.ts +
+  src/harness/index.ts.
+  - `runHarness(probes, opts)` returns `HarnessReport`:
+    `{results: ProbeResult[], totals: {total, passed, failed,
+    byCategory: Record<OwaspCategory, {total, passed, failed}>},
+    providerUsed, fallbackToMock, severityFloor, shouldExitNonZero}`.
+  - `ProbeResult = {probeId, owaspCategory, severity, verdict,
+    providerName, durationMs, sourcePath}` — sourcePath kept for
+    in-memory consumers but stripped at JSON serialization.
+  - Provider resolution gate (paid-API defense load-bearing): the
+    harness NEVER constructs a paid provider. opts.provider supplied
+    + healthy → use; supplied + unhealthy (or health() throws) →
+    MockLlmProvider + stderr warning; absent → MockLlmProvider +
+    stderr warning. AC-002-2 satisfied. Composed with T-13
+    constructor gate so the only path to a paid provider is explicit
+    caller construction at the CLI / L7 layer.
+  - Sequential per D-006: `for (...of probes)` with awaited generate()
+    per iteration. No Promise.all, no worker pool. Bounds Ollama
+    load on consumer hardware and keeps stderr progress monotonic.
+  - Stderr progress `[N/M] <probeId>\n` (AC-002-3). probeId is
+    sanitize()-ed before write even though the loader already
+    constrains the form to `^[a-z0-9][a-z0-9-]*$` — defense in depth.
+  - Severity per probe = `CATEGORY_SEVERITY[probe.owasp_category]`.
+    Map: LLM02 + LLM06 = critical (PII / agency); LLM01 / 03 / 04 /
+    05 = high (injection / supply chain / poisoning / output
+    handling); LLM07 / 08 / 09 / 10 = medium (system prompt /
+    embedding / misinfo / unbounded consumption). Map is the single
+    place that opinions about category risk; downstream reads as
+    data.
+  - `--severity` exit gate (AC-002-4): on each failed probe, compare
+    `SEVERITY_ORDER[result.severity] >= SEVERITY_ORDER[opts
+    .severityFloor]`. Any match → `shouldExitNonZero=true`. Default
+    floor = `high`. SEVERITY_ORDER {low:0, medium:1, high:2,
+    critical:3}.
+  - Provider error: caught + logged to stderr + recorded as empty
+    output → detector verdict (typically a fail). Run continues —
+    a single flaky call does not abort the corpus pass.
+  - AbortSignal: propagated to provider.generate() via opts.signal;
+    checked at top of each iteration so the run can stop cleanly
+    between probes. Emits `[harness] aborted before completion` to
+    stderr on break.
+  - `serializeHarnessReport(report)` → `mcp-guard-harness-report@1`
+    schema-tagged JSON view, sourcePath stripped, verdict.reason
+    sanitized via T-07. Always ends with trailing newline.
+  - `now` injection seam: opts.now defaults to performance.now;
+    tests override with a deterministic counter so durationMs is
+    reproducible.
+- tests/unit/harness-runner.test.ts — 18 specs.
+  - Provider resolution (4): no-provider → mock + stderr warning,
+    healthy → use, unhealthy → mock + warning, health() throws →
+    mock fallback (defense-in-depth narrow).
+  - Progress + result shape (3): [N/M] ordered correctly, result
+    fields populated correctly with severity-by-category lookup,
+    provider error captured as empty output + fail + stderr error.
+  - Severity gate (5): all-pass → exit false, high fail @ floor=high
+    → exit true, no-fail @ floor=high → exit false, medium fail @
+    floor=medium → exit true, medium fail @ floor=critical → exit
+    false.
+  - byCategory aggregation (1): mixed LLM01 + LLM06 corpus → per-
+    category counts match per-result aggregation; uninvolved
+    categories show {0,0,0}.
+  - Abort (1): controller aborts after first probe → run stops at
+    1 result + stderr emits abort line.
+  - Serialization (2): JSON-parseable with `mcp-guard-harness-
+    report@1` schema marker + expected shape; sourcePath stripped
+    from serialized view.
+  - Static tables (2): CATEGORY_SEVERITY covers all 10 OWASP
+    categories; SEVERITY_ORDER monotonic low<medium<high<critical.
+
+**Implementation Notes propagation**:
+- StubStream test helper is a factory returning a typed shim
+  (NodeJS.WritableStream & {text: string}) via `unknown` cast — the
+  harness only consumes `.write()`, so re-implementing the full
+  WritableStream surface would be waste. The cast lives in one place.
+- Provider error path returns empty output rather than re-throwing
+  so a corpus run is robust against intermittent network failures
+  (a key requirement for Ollama on consumer hardware — gemma3:4b
+  occasionally OOMs and the daemon recovers asynchronously).
+- The `now` seam is the only test seam in the harness. Time is the
+  one non-deterministic input; everything else (provider, signal,
+  stderr) is already injectable. Without the seam, durationMs
+  assertions would be flaky.
+- CATEGORY_SEVERITY opinionates LLM02 + LLM06 as critical because
+  those map to data exfil + autonomous action — the categories
+  where a single false-negative is unrecoverable. LLM07 demoted to
+  medium because system-prompt leakage, while embarrassing, is
+  rarely externally exploitable when the prompt is itself non-
+  secret. This stance can be revisited in a later corpus_version
+  bump; downstream code reads the map as data, no other site needs
+  to change.
+- `shouldExitNonZero` is a boolean not an exit code so the CLI
+  layer (T-32 + L7 wire-up) owns the exit-code policy. The harness
+  is library-shaped; the CLI is the process boundary.
+
+**Status**: L5 T-23 + T-24 + T-25 + T-26 complete. 585 vitest specs
+PASS (567 prior + 18 new), tsc strict green. ADR count unchanged
+at 5. No new dependencies.
+
+**Next**: T-27 F-002 e2e — `tests/e2e/inject.test.ts` drives the
+full pipeline: load real `src/probes/owasp/` corpus (30+ probes,
+all 10 categories) → run harness against MockLlmProvider →
+serialize report → assert summary shape, AC-002-1 (≥ 30 + all
+categories), AC-002-5 (JSON-parseable + per-probe verdict +
+totals). e2e budget should be comfortable since the harness is
+in-process + mock provider is sub-millisecond per call.
