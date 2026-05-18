@@ -25,11 +25,13 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "audit": "pnpm audit --audit-level=high",
-    "mask:check": "tsx scripts/precommit_mask_check.ts"
+    "mask:check": "tsx scripts/precommit_mask_check.ts",
+    "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "packageManager": "pnpm@11.0.8",
   "dependencies": {
