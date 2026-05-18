@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 T-14 .mcp.json parser completed (T-01 through T-14, 2026-05-18).**
-**Next: L3 T-15 JSON emitter → T-16 SARIF emitter → T-17 console emitter.**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 T-14/T-15 (parser + JSON emitter atomic) completed (T-01 through T-15, 2026-05-18).**
+**Next: L3 T-16 SARIF v2.1.0 emitter → T-17 console emitter.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L3 T-15 (JSON emitter atomic) → T-16 (SARIF v2.1.0) → T-17 (console) next; T-14 parser landed
+- L3 T-16 (SARIF v2.1.0 emitter) → T-17 (console emitter) next; T-15 JSON emitter + atomic write landed
 
 ## Open questions
 

@@ -463,3 +463,72 @@ unchanged at 5.
 **Next**: T-15 (`src/io/emitters/json.ts` + `src/io/emitters/atomic.ts`
 — write to temp path + rename to final, AC-NF-7 atomic safety against
 concurrent runs, AC-001-4 clean report = empty results[]).
+
+## 2026-05-18 — L3 T-15 JSON emitter + atomic write (AC-NF-7, AC-001-4)
+
+**Goal**: Land the canonical report shape, a hand-rolled atomic file
+write (temp + rename), and the JSON emitter that composes them.
+AC-NF-7 satisfied by UUID-suffixed temp paths; AC-001-4 satisfied by
+defining a clean report as `results: []` (positive empty array, not
+absent field).
+
+**Changed**:
+
+- **src/io/emitters/atomic.ts**: `writeAtomic(targetPath, content,
+  opts?)` writes to `.${basename}.${randomUUID()}.tmp` in the target
+  directory with `wx` flag (exclusive create), then renames into
+  place. On failure, best-effort `unlink` of the temp file before
+  throwing `IoError` with `{ target, tempPath, code }` in details.
+  `buildTempPath` is exported so tests can assert the UUID v4 shape
+  and callers can pre-compute a staging path.
+- **src/io/emitters/json.ts**: `Finding` + `ScanReport` types, plus
+  `REPORT_SCHEMA_VERSION = '1.0'` and `TOOL_NAME = 'mcp-guard'`.
+  `buildReport({ target, findings?, toolVersion?, generatedAt? })`
+  defaults `findings` to `[]` and `generatedAt` to `new Date().
+  toISOString()`. `isCleanReport(r)` is the canonical AC-001-4
+  predicate. `serializeReport(r)` produces 2-space-indented JSON
+  with a trailing newline. `emitJsonReport(r, path)` composes
+  serialize + writeAtomic.
+- **src/io/emitters/index.ts**: barrel re-exports both modules.
+- **tests/unit/io-emitters-atomic.test.ts**: 9 vitest specs covering
+  buildTempPath UUID format, happy-path single write + no temp
+  leakage, atomic overwrite of pre-existing target, Uint8Array
+  content, IoError on missing parent dir (ENOENT) with full details,
+  temp-file cleanup when rename fails (target is a directory), two-
+  writer concurrent race producing one valid file, eight-writer
+  concurrent race surfacing acceptable IoError on losers without
+  corruption.
+- **tests/unit/io-emitters-json.test.ts**: 11 vitest specs covering
+  buildReport defaults + overrides + ISO-8601 shape + ordering,
+  isCleanReport for empty vs non-empty (and AC-001-4 invariant:
+  `results: []` is present in the serialized output, never absent),
+  serializeReport pretty-printing + trailing newline + round-trip,
+  emitJsonReport integration writing + reading both clean and
+  non-clean reports.
+
+**Implementation Notes propagation**:
+- Concurrent rename on Windows can raise sharing violations
+  (MoveFileExW refuses while target handle is open elsewhere); the
+  AC-NF-7 surface wording is "not corrupt", not "all writers
+  succeed". The eight-writer test asserts at-least-one fulfilled +
+  any rejection is a typed IoError + final file matches exactly
+  one input verbatim + no orphan temp files. This is the
+  corruption-avoidance contract.
+- `writeFile(..., { flag: 'wx' })` is the exclusive-create variant;
+  with a UUID temp suffix the collision probability is negligible
+  but the flag is still load-bearing as a defensive check.
+- `serializeReport` ends with a literal newline so POSIX tooling
+  (`cat`, line-oriented diff) handles the file cleanly.
+- AC-001-4 ("clean report = empty results[]") is enforced both
+  structurally (`buildReport` always allocates `results: []` even
+  with no findings) and by a serialization test that confirms the
+  field is present in the JSON output.
+
+**Status**: L0 + L1 + L2 + L3 T-14/T-15 complete. 205 vitest specs
+PASS (185 prior + 20 new), tsc strict green. ADR count unchanged at 5.
+
+**Next**: T-16 (`src/io/emitters/sarif.ts` — SARIF v2.1.0 hand-rolled
+~200 LOC emitter per D-003, mapping Finding → SARIF result + rule
+metadata for GitHub code scanning UI ingestion at AC-α-6), then
+T-17 (`src/io/emitters/console.ts` — human-readable terminal
+output, ANSI sanitize via T-07 logger).
