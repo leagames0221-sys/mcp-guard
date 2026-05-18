@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 I/O layer (T-14 ~ T-17 all drained) completed (T-01 through T-17, 2026-05-18).**
-**Next: L4 Scanner layer (T-18 registry → T-19 SSRF → T-20 command-injection → T-21 auth-gap → T-22 supply-chain-risk → integration).**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 I/O layer (T-14 ~ T-17) + L4 T-18 Scanner registry pattern completed (T-01 through T-18, 2026-05-18).**
+**Next: T-19 SSRF detector → T-20 command-injection → T-21 auth-gap → T-22 supply-chain-risk + F-001 e2e.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L4 Scanner layer pending kickoff (T-18 registry → T-19/T-20/T-21/T-22 four detectors); L3 I/O fully drained
+- L4 T-18 registry complete (4 stub Scanner slots in canonical order); T-19 SSRF detector next — replace SSRF stub with real logic in `src/scanners/ssrf.ts` + ≥3 positive/negative fixtures under `tests/fixtures/mcp/`
 
 ## Open questions
 

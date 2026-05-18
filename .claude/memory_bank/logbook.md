@@ -677,3 +677,57 @@ T-20 command-injection detector, T-21 auth-gap detector, T-22
 supply-chain-risk detector + e2e integration. L4 is the F-001
 scanner core; L5+ harness wires probes + LLM providers to detector
 output.
+
+## 2026-05-18 — L4 T-18 Scanner registry pattern
+
+**Goal**: Land the L4 registry shape so T-19..T-22 can each light up
+one detector slot without re-litigating the contract. Stubs only at
+this task — the four real detectors land in their own commits.
+
+**Changed**:
+
+- **T-18 (this commit)**: `src/scanners/types.ts` exports
+  `ScannerCategory` union (`'ssrf' | 'command-injection' | 'auth-gap'
+  | 'supply-chain-risk'`), `SCANNER_CATEGORIES` readonly array in
+  canonical order, `ScanContext` ({ config: McpConfig; target:
+  absolute path }), `Scanner` interface ({ category; scan(ctx):
+  Finding[] }), and `makeFindingId({category, ruleId, target,
+  locator})` deterministic 16-char sha256 helper for SARIF
+  partialFingerprints. `src/scanners/index.ts` exports the registry
+  surface: `createScannerRegistry()` returns one fresh Scanner per
+  category (stubs returning [] for now); `runAllScanners(ctx,
+  scanners?)` flattens findings across the registry. tests/unit/
+  scanners-registry.test.ts: 11 specs covering category ordering,
+  registry length+contract, fresh-array invariant, empty-config-on-
+  stubs invariant, runAllScanners flatten + empty-registry edge,
+  makeFindingId determinism + per-field sensitivity.
+
+**Implementation Notes propagation**:
+- Stubs live inside `createScannerRegistry()` via a private
+  `makeStubScanner(category)` factory rather than 4 separate
+  placeholder files. T-19..T-22 will each carve out one real
+  detector file (`src/scanners/ssrf.ts` etc.) and update the
+  registry import in one edit — keeps the diff per detector task
+  tightly scoped to its own file + its own fixtures.
+- `makeFindingId` joins inputs with a single-space delimiter and
+  hashes via sha256, truncating to 16 hex chars. Truncation matches
+  the SARIF partialFingerprints stability budget (collision space
+  ≈ 2^64); detectors must pass `locator` granular enough that two
+  distinct findings on the same target never share the tuple.
+- `runAllScanners` accepts an optional `scanners` arg so tests can
+  inject fixed-output fakes (verified by the flatten test) — the
+  default branch builds a fresh registry per call, which means a
+  single misbehaving detector cannot leak state into the next call.
+- Empty-config-on-stubs invariant is what makes T-19..T-22 refactor-
+  safe: each detector turns itself on only for its own fixtures, so
+  swapping the stub for a real impl never breaks unrelated tests.
+
+**Status**: L4 T-18 complete. 258 vitest specs PASS (247 prior +
+11 new), tsc strict green. ADR count unchanged at 5.
+
+**Next**: T-19 SSRF detector (`src/scanners/ssrf.ts`) — flag stdio
+servers with suspicious command targets, http servers with
+loopback/internal URLs, and headers leaking outbound SSRF
+primitives; replace the SSRF stub in the registry. Fixtures:
+`tests/fixtures/mcp/ssrf-positive-*.json` (≥3) and
+`ssrf-negative-*.json` (≥3).
