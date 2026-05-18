@@ -15,7 +15,7 @@
 // Run: `pnpm exec tsx scripts/benchmark.ts`
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
-import { join, dirname, basename } from 'node:path';
+import { join, basename } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
 import { parseMcpConfig } from '../src/scanners/mcp-schema/validator.js';
