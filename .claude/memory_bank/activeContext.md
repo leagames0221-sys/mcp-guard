@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 T-14/T-15 (parser + JSON emitter atomic) completed (T-01 through T-15, 2026-05-18).**
-**Next: L3 T-16 SARIF v2.1.0 emitter → T-17 console emitter.**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 T-14/T-15/T-16 (parser + JSON emitter atomic + SARIF v2.1.0) completed (T-01 through T-16, 2026-05-18).**
+**Next: L3 T-17 console emitter (last of L3); then L4+ scanners / probes / harness.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L3 T-16 (SARIF v2.1.0 emitter) → T-17 (console emitter) next; T-15 JSON emitter + atomic write landed
+- L3 T-17 (console emitter, last of L3) next; T-16 SARIF v2.1.0 hand-rolled landed
 
 ## Open questions
 

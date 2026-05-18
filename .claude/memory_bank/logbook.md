@@ -532,3 +532,80 @@ PASS (185 prior + 20 new), tsc strict green. ADR count unchanged at 5.
 metadata for GitHub code scanning UI ingestion at AC-α-6), then
 T-17 (`src/io/emitters/console.ts` — human-readable terminal
 output, ANSI sanitize via T-07 logger).
+
+## 2026-05-18 — L3 T-16 SARIF v2.1.0 emitter (AC-001-3, D-003)
+
+**Goal**: Land the SARIF v2.1.0 emitter hand-rolled per D-003 (no
+sarif-multitool / npm sarif dep — supply-chain blast-radius
+minimization). Output is shaped for GitHub code scanning UI ingestion;
+schema-vendored end-to-end validation is deferred to T-39 per the
+T-16 verify wording.
+
+**Changed**:
+
+- **src/io/emitters/sarif.ts** (~190 LOC): full typed SARIF v2.1.0
+  surface — SarifLog ($schema + version + runs[]), SarifRun
+  (tool.driver { name, version, informationUri, rules[] } +
+  results[]), SarifResult (ruleId + ruleIndex + level + message.text
+  + locations[] + partialFingerprints), SarifReportingDescriptor
+  (id + name + shortDescription + defaultConfiguration.level),
+  SarifLocation/PhysicalLocation/Region/ArtifactLocation, SarifLevel
+  union 'none' | 'note' | 'warning' | 'error'.
+  Public helpers: severityToSarifLevel (low→note, medium→warning,
+  high+critical→error), pathToSarifUri (Windows backslash → forward
+  slash, no file:// prefix because GitHub matches repo-relative),
+  buildSarifLog (dedup rules by id with stable first-appearance
+  ruleIndex; defaultConfiguration.level taken from first-appearance
+  severity), serializeSarifLog (2-space pretty + trailing newline),
+  emitSarifReport (composes serialize + writeAtomic).
+- **src/io/emitters/index.ts**: re-export full SARIF surface +
+  type-only re-exports for downstream callers.
+- **tests/unit/io-emitters-sarif.test.ts** — 21 vitest specs:
+  4 severity / path-uri mapping cases, 3 spec required fields
+  ($schema + version + runs[]; driver name + version +
+  informationUri + rules[]; clean report = results: [] + rules: []
+  preserved through SARIF for AC-001-4 invariant), 6 result mapping
+  cases (ruleId + level + message.text; partialFingerprints.
+  mcpGuardFindingId for GitHub UI de-dup; locations[] with full
+  region; region.startLine alone when col absent; region omitted
+  entirely when neither line nor col; locations omitted when path
+  absent), 3 rules-dedup + ruleIndex tests (4-finding mixed-rule
+  array dedupes to 3 rules with stable indices [0,1,0,2]; rule's
+  defaultConfiguration.level matches first-appearance severity;
+  rule carries name + shortDescription.text), 2 serializeSarifLog
+  tests (trailing newline + pretty-print prefix; round-trip via
+  JSON.parse), 2 emitSarifReport integration tests (write +
+  re-read findings report; write + re-read clean report), 2
+  GitHub-compatibility-surface tests (every result has ruleId +
+  ruleIndex + level + message.text; every rule has id + name +
+  defaultConfiguration.level).
+
+**Implementation Notes propagation**:
+- D-003 hand-rolled choice still holds: ~190 LOC body covers the
+  full SARIF surface for the F-001 scanner use case. Adding
+  sarif-multitool or a typed SARIF npm dep would add a 150+ MB
+  transitive supply chain set for value we already have.
+- GitHub code scanning ingestion requires partialFingerprints to
+  de-dup findings across runs; mcpGuardFindingId carries the
+  finding's stable id (which F-001 detectors generate at scan time).
+  This also lets GitHub Security tab show "open" vs "closed"
+  findings without manual triage.
+- pathToSarifUri does NOT prefix file:// — GitHub matches repo-
+  relative paths against the workspace, so absolute or file:// URIs
+  break that match.
+- Schema-vendored validation (T-16 verify wording: "vendored copy
+  under tests/fixtures/sarif-schema.json") is deferred to T-39
+  (AC-alpha-6 GitHub UI literal display verification). Adding a
+  ~200 KB schema vendored snapshot is a separate adoption: needs
+  the supply-chain audit gate for the fetch source (schemastore.org)
+  + a drift workflow analogous to T-09 mcp-schema-drift. Out of
+  scope for T-16, in scope for T-39.
+
+**Status**: L0 + L1 + L2 + L3 T-14/T-15/T-16 complete. 226 vitest
+specs PASS (205 prior + 21 new), tsc strict green. ADR count
+unchanged at 5.
+
+**Next**: T-17 (`src/io/emitters/console.ts` — human-readable
+terminal output, ANSI sanitize via T-07 logger, colour by severity,
+respect NO_COLOR env). Last of L3; with T-17 done the L4+ scanner /
+probe / harness wiring can begin.

@@ -14,3 +14,27 @@ export type {
   ScanReport,
   BuildReportOptions,
 } from './json.js';
+
+export {
+  buildSarifLog,
+  emitSarifReport,
+  serializeSarifLog,
+  severityToSarifLevel,
+  pathToSarifUri,
+  SARIF_VERSION,
+  SARIF_SCHEMA,
+  TOOL_INFORMATION_URI,
+} from './sarif.js';
+export type {
+  SarifLog,
+  SarifRun,
+  SarifResult,
+  SarifLevel,
+  SarifLocation,
+  SarifPhysicalLocation,
+  SarifRegion,
+  SarifMessage,
+  SarifReportingDescriptor,
+  SarifToolComponent,
+  SarifArtifactLocation,
+} from './sarif.js';
