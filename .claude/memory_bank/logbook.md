@@ -57,3 +57,52 @@
 **Status**: Stage 4 Tasks v2 accepted, L0 Foundation in progress.
 
 **Next**: Sequentially execute T-01 (deps batch + .npmrc) → T-02 (tsconfig + vitest config + .editorconfig) → T-03 (package.json scripts + engines.node) → T-04 (SECURITY.md) → T-05 (precommit mask hook + smoke test).
+
+## 2026-05-18 — L0 Foundation completed (T-01 through T-05)
+
+**Goal**: Execute every L0 task end-to-end with verification + commit per task.
+
+**Changed**:
+
+- **T-01 (commit d7f9f1c)**: dependency adoption single batch — 8 deps installed
+  (commander 13.1.0 + zod 3.25.76 + yaml 2.9.0 as runtime; vitest 2.1.9 +
+  coverage-v8 + typescript 5.9.3 + types-node 22 + tsx 4.22 as dev); .npmrc
+  engine-strict=true; pnpm-workspace.yaml onlyBuiltDependencies=[]; lockfile
+  committed; supply-chain audit at high threshold = 0 high, 2 moderate
+  (esbuild/vite transitive via vitest 2.x, dev-only, documented residual)
+- **T-02 (commit 54aabe7)**: tsconfig.json strict baseline (ES2022 + ESM +
+  Bundler + noUncheckedIndexedAccess + exactOptionalPropertyTypes); vitest
+  config with coverage thresholds 80% across lines/functions/branches/
+  statements (AC-alpha-1 construction-time gate); .editorconfig; src/index.ts
+  placeholder; typecheck + test both exit 0
+- **T-03 (commit 01951de)**: package.json scripts enrichment (build, prepublishOnly);
+  engines.node ">=20.0.0" + .npmrc engine-strict=true literal verified;
+  build smoke verified (dist/ emitted from placeholder)
+- **T-04 (commit 8a98b32)**: SECURITY.md (110 lines, supported versions,
+  report channels, SLA, scope, hardening posture cross-referencing AC-NF-1
+  through AC-NF-7, coordinated disclosure, MIT license)
+- **T-05 (commit 72ac466)**: scripts/precommit_mask_check.ts (pure-function
+  library + script entry gated on !VITEST); 11 vitest specs PASS; .pre-commit-
+  config.yaml wired with `entry: pnpm mask:check`; smoke 1 (forbidden token
+  from internal mask list staged) returns exit 1 + BLOCKED output, smoke 2
+  (benign line) returns exit 0 + PASS scanning 66 mask tokens; rootDir
+  removed from tsconfig to allow scripts/ + tests/ inclusion
+
+**Implementation Notes propagation**:
+- src/index.ts placeholder will be superseded by real public API exports as
+  F-001/F-002/F-003 surfaces land (T-22/T-27/T-29). Plain SCAFFOLD_MARKER for now.
+- vitest passWithNoTests=true intentionally tolerates empty-state during L1+
+  builds; coverage threshold 80% applies to actually-included src/ files only.
+- 2 moderate supply-chain vulns (esbuild GHSA-67mh-4wv8-2f99, vite GHSA-4w7w-
+  66w2-5vf9) are dev-tooling transitives of vitest 2.x. Vitest 3.x major bump
+  resolves but is deferred — a future Phase 1 task can rebenchmark and either
+  bump vitest or apply pnpm overrides once vitest@3 baseline is settled.
+
+**Status**: L0 Foundation complete. Repo state: 5 task commits + 1 Stage 4
+approval commit. Stack toolchain wired and verified end-to-end. Pre-commit
+mask hook active and proven (block + pass paths both smoke-tested).
+
+**Next**: L1 Cross-cutting modules — T-06 (src/errors/ + docs/EXIT_CODES.md),
+T-07 (src/logger/ + ANSI sanitize), T-08 (src/config/ + zod schemas), T-09
+(src/scanners/mcp-schema/ + ADR-0005 upstream pin). T-06 depends on T-02
+(already complete); T-07 same; T-08 depends on T-06+T-07; T-09 depends on T-08.

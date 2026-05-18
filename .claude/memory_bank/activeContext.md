@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 Spec-Driven Workflow — Stage 1 + 2 + 3 v2 + Stage 4 Tasks v2 Accepted (2026-05-18).**
-**Next: L0 Foundation kickoff (T-01 dependency adoption batch → T-02 toolchain → T-03 scripts → T-04 SECURITY.md → T-05 mask hook).**
+**Phase 1 — L0 Foundation completed (T-01 through T-05, 2026-05-18).**
+**Next: L1 Cross-cutting modules (T-06 errors → T-07 logger → T-08 config → T-09 mcp-schema).**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L0 Foundation kickoff (T-01 ~ T-05)
+- L1 Cross-cutting modules pending kickoff (T-06 ~ T-09)
 
 ## Open questions
 
