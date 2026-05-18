@@ -161,3 +161,27 @@ reach 5 at L9.
 **Next**: L2 LlmProvider (T-10 interface, T-11 mock, T-12 ollama, T-13
 paid-API) and L3 I/O (T-14 parsers, T-15 JSON, T-16 SARIF, T-17 console).
 L2 + L3 are parallelable once L1 lands.
+
+## 2026-05-18 — L2 T-10 LlmProvider interface
+
+**Goal**: Land D-004 minimal interface — `{ name, generate, health }` — with
+no abstract class and no adapter layer, gating future mock/ollama/paid impls.
+
+**Changed**:
+
+- **T-10**: src/providers/llm/{types,index}.ts — `LlmProvider` interface
+  (readonly name: LlmProviderName; generate(prompt, opts?): Promise<string>;
+  health(): Promise<boolean>) + `LlmGenerateOptions` (temperature?, maxTokens?,
+  signal?: AbortSignal); 11 vitest compile-time gates via expectTypeOf —
+  3-member surface, name type equals LlmProviderName union, generate return
+  type, generate parameter tuple (opts optional), health return type, health
+  zero-arg, structural impl accepted, LlmGenerateOptions all-optional + per
+  field types.
+
+**Status**: L0 + L1 + L2 T-10 complete. 108 vitest specs PASS (97 prior + 11
+new), tsc strict green. ADR count unchanged at 4; T-10 is contract-only and
+does not warrant a new ADR (D-004 in ADR-0003 covers it).
+
+**Next**: T-11 (`src/providers/llm/mock.ts` — deterministic canned responses
+keyed by prompt hash, health() always true; AC-002-2 fallback, AC-NF-3 CI
+default no-network).
