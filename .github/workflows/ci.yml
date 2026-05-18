@@ -43,7 +43,9 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11
+          # version sourced from package.json "packageManager" field;
+          # passing an explicit `version:` here triggers pnpm/action-
+          # setup@v4's multi-source-conflict error.
           run_install: false
 
       - name: Install dependencies

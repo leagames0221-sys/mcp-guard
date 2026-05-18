@@ -44,7 +44,8 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11
+          # version sourced from package.json "packageManager" field
+          # (pnpm/action-setup@v4 errors on multi-source mismatch).
           run_install: false
 
       - name: Install dependencies
