@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "node",
+      "args": ["./tools/fs-server.js", "--root", "./workspace"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@example-org/mcp-github"]
+    }
+  }
+}

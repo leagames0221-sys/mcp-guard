@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "vendor-saas": {
+      "url": "https://mcp.vendor-example.com/sse",
+      "transport": "sse",
+      "headers": {
+        "authorization": "Bearer redacted-fixture-token"
+      }
+    },
+    "ci-relay": {
+      "url": "https://relay.example.net:8443/connect",
+      "transport": "streamable-http"
+    }
+  }
+}

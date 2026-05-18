@@ -731,3 +731,80 @@ loopback/internal URLs, and headers leaking outbound SSRF
 primitives; replace the SSRF stub in the registry. Fixtures:
 `tests/fixtures/mcp/ssrf-positive-*.json` (≥3) and
 `ssrf-negative-*.json` (≥3).
+
+## 2026-05-18 — L4 T-19 SSRF detector
+
+**Goal**: Light up the SSRF registry slot with real detection logic
+keyed to the OWASP A10 + cloud-IMDS incident corpus. Stdio servers
+have no URL surface and are deferred to T-20 (command-injection);
+SSRF rules therefore key entirely on http server URLs.
+
+**Changed**:
+
+- **T-19**: src/scanners/ssrf.ts — `evaluateSsrfUrl(rawUrl)` pure
+  function returning `RuleHit | undefined`, plus `ssrfScanner`
+  registry entry. 4 rules, in match precedence:
+  - SSRF-NON-HTTP-SCHEME (high): file: / gopher: / dict: / ftp: /
+    ftps: schemes — classic SSRF primitives (local file read,
+    protocol smuggling).
+  - SSRF-CLOUD-METADATA (critical): 169.254.169.254 (AWS IMDS +
+    DigitalOcean + OpenStack), metadata.google.internal /
+    metadata.goog (GCP), 100.100.100.200 (Alibaba),
+    metadata.azure.com (Azure), fd00:ec2::254 (AWS IMDS IPv6) —
+    primary credential exfiltration vector.
+  - SSRF-LOOPBACK (high): localhost / 0.0.0.0 / 127.0.0.0/8 (full
+    /8 range) / ::1 / [::1] — exposes any service on local
+    interface.
+  - SSRF-PRIVATE-IP (high): RFC1918 10/8, 172.16-31/12, 192.168/16,
+    plus link-local 169.254/16 non-IMDS subset, plus CGNAT
+    100.64.0.0/10 — exposes internal-network services.
+- src/scanners/index.ts — `createScannerRegistry()` now wires
+  `ssrfScanner` into slot 0 (canonical SSRF position); slots 1-3
+  remain stubs pending T-20/T-21/T-22.
+- tests/fixtures/mcp/: 3 positive (ssrf-positive-cloud-metadata
+  IMDS / ssrf-positive-loopback localhost / ssrf-positive-private-ip
+  10.0.42.17) + 3 negative (ssrf-negative-public-https /
+  ssrf-negative-stdio-only / ssrf-negative-corporate-https vendor
+  saas + relay).
+- tests/unit/scanners-ssrf.test.ts — 43 specs covering: 5 IMDS-host
+  variants per rule, 5 loopback variants (localhost, 127.0.0.1,
+  127.0.0.5 in /8, 0.0.0.0, [::1]), 6 private-IP variants (each
+  RFC1918 corner + link-local non-IMDS + CGNAT) + 4 adjacent-range
+  negatives (172.15/172.32/11.0/100.63 not flagged), 4 non-http
+  scheme variants, 4 benign URLs, unparseable-input safety,
+  cloud-metadata-beats-private-ip precedence assertion, Finding
+  shape (id format / source=static / path / details locator),
+  Finding-id determinism + target-path sensitivity, stdio-skip,
+  multi-server flatten, plus fixture-driven assertion (parser
+  round-trip + scanner) for each positive + negative fixture, plus
+  registry slot-0 wiring + slots-1-3-still-stubs invariants.
+
+**Implementation Notes propagation**:
+- Match precedence is `scheme → cloud-metadata host → loopback →
+  private-IP`. A URL like `http://169.254.169.254/` is BOTH link-
+  local AND IMDS; cloud-metadata wins because IMDS-specific framing
+  surfaces the credential-exfil risk that pure private-IP framing
+  would understate. Verified explicitly in a "precedence" spec.
+- Loopback rule uses a numeric `127.X.Y.Z` check (not just the
+  string `127.0.0.1`), since 127.0.0.0/8 is reserved and `127.0.0.5`
+  routes to the local interface identically.
+- CGNAT 100.64.0.0/10 is included as private-IP because consumer
+  laptops behind ISP-managed routers commonly receive 100.64/10
+  addresses and any service bound there is intranet-only by design.
+- The detector trusts T-09's schema validator (`z.string().url()`)
+  to gate URL well-formedness; the residual `try/catch (new URL)`
+  exists purely so the detector returns `undefined` rather than
+  throwing on hypothetical edge cases. No-finding > false-finding.
+- `evaluateSsrfUrl` is exported as a pure function so the L5+
+  harness can re-use rule semantics without paying registry
+  overhead — keeps the rule logic single-sourced.
+
+**Status**: L4 T-18 + T-19 complete. 301 vitest specs PASS (258
+prior + 43 new), tsc strict green. ADR count unchanged at 5.
+
+**Next**: T-20 command-injection detector (`src/scanners/command-
+injection.ts`) — flag stdio `command` + `args` for shell meta-
+characters, `sh -c` / `bash -c` invocations, pipe chains, env-var
+splice patterns, and unsafe interpreter paths. Fixtures:
+`tests/fixtures/mcp/cmdinj-positive-*.json` (≥3) and
+`cmdinj-negative-*.json` (≥3).

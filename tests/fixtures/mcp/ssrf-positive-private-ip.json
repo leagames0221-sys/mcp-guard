@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "intranet-bridge": {
+      "url": "http://10.0.42.17:3000/mcp",
+      "transport": "streamable-http"
+    }
+  }
+}

@@ -5,18 +5,20 @@
 
 import type { Finding } from '../io/emitters/json.js';
 import {
-  SCANNER_CATEGORIES,
   type ScanContext,
   type Scanner,
   type ScannerCategory,
 } from './types.js';
+import { ssrfScanner } from './ssrf.js';
 
 export { SCANNER_CATEGORIES, makeFindingId } from './types.js';
 export type { Scanner, ScanContext, ScannerCategory } from './types.js';
+export { ssrfScanner, evaluateSsrfUrl } from './ssrf.js';
 
 // Stub detector — kept private so the only export surface is the
-// registry factory. T-19..T-22 each lift one stub into its own file
-// (src/scanners/ssrf.ts etc.) and the registry import is updated.
+// registry factory. T-20..T-22 each lift one stub into its own file
+// (src/scanners/command-injection.ts etc.) and the registry import
+// is updated.
 function makeStubScanner(category: ScannerCategory): Scanner {
   return {
     category,
@@ -30,7 +32,12 @@ function makeStubScanner(category: ScannerCategory): Scanner {
 // returned array is fresh each call so callers may mutate / filter
 // without affecting other call sites.
 export function createScannerRegistry(): Scanner[] {
-  return SCANNER_CATEGORIES.map(makeStubScanner);
+  return [
+    ssrfScanner,
+    makeStubScanner('command-injection'),
+    makeStubScanner('auth-gap'),
+    makeStubScanner('supply-chain-risk'),
+  ];
 }
 
 // Convenience: invoke every registered scanner against `ctx` and

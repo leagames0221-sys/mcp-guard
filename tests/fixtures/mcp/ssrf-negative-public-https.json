@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "public-api": {
+      "url": "https://api.example.com/v1/mcp",
+      "transport": "sse"
+    }
+  }
+}
