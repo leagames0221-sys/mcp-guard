@@ -402,3 +402,64 @@ validator; AC-001-2 invalid → exit 2 + structured error; AC-001-5
 zero writes to input path), then T-15 (JSON emitter atomic temp+
 rename for AC-NF-7), T-16 (SARIF v2.1.0 emitter), T-17 (console
 emitter).
+
+## 2026-05-18 — L3 T-14 .mcp.json parser (I/O wrapper)
+
+**Goal**: Land the filesystem-aware reader for .mcp.json files. The T-09
+zod validator handles schema interpretation; T-14 owns the I/O, the
+error-code mapping per AC-001-2, and the never-modify guarantee per
+AC-001-5.
+
+**Changed**:
+
+- **T-14**: src/io/parsers/mcp-config.ts — `readMcpConfig(filePath)`
+  resolves to absolute, opens for reading only (`node:fs/promises`
+  readFile), delegates schema parsing to `parseMcpConfig` from
+  src/scanners/mcp-schema/validator.ts. Three-way error mapping:
+  filesystem failure → IoError (exit 74) with `code` ENOENT/EACCES/...
+  in details; malformed JSON / non-object root → DataFormatError
+  (exit 65); schema violation → InvalidInputError (exit 2). When
+  V8's JSON.parse error message carries position information,
+  `locateJsonError` resolves the byte offset (or explicit "line L
+  column C" form on newer Node) to {line, col} and enriches the
+  DataFormatError details — defensively returns undefined when
+  neither pattern matches so callers never fabricate coordinates.
+- src/io/parsers/index.ts barrel exports readMcpConfig +
+  locateJsonError + ReadMcpConfigResult.
+- **tests/fixtures/mcp/** new directory with 6 fixtures: valid-stdio,
+  valid-http (sse transport), valid-mixed (stdio + http together),
+  invalid-trailing-comma (JSON syntax error), invalid-schema-
+  missing-command (semantic failure), invalid-root-array (non-object
+  root). Fixture URLs use example.invalid TLD per RFC 6761 and any
+  token strings are obvious placeholders.
+- **tests/unit/io-parsers-mcp-config.test.ts** — 16 vitest specs:
+  3 happy-path round-trips, 1 relative→absolute path resolution,
+  2 AC-001-5 invariants (content + mtime + size unchanged on success
+  AND on parse failure), 5 AC-001-2 error mapping cases (ENOENT,
+  trailing-comma → DataFormatError, root-array → "root must be a
+  JSON object", missing-command → InvalidInputError with issues[],
+  line/col enrichment via tmpdir-written fixture), 5
+  locateJsonError unit cases (position-form, explicit-form,
+  no-match, overshoot, position 0).
+
+**Implementation Notes propagation**:
+- mkdtemp + writeFile + unlink for tmp-fixture tests are kept inside
+  the test file rather than a shared helper — only two specs need
+  it, and the inline form keeps the lifecycle visible.
+- locateJsonError is exported from the public barrel so the future
+  console emitter (T-17) can reuse the same coordinate logic when
+  rendering operator-friendly error pointers.
+- Position computation for "at position N": loop iterates [0, N)
+  counting newlines and column. Verified: for raw "aaaa\nbb\ncccc"
+  position 7 → line 2, col 3 (the trailing newline of line 2).
+- AC-001-5 verified by stat() mtime + size + content comparison
+  before/after every read; vi.spyOn on fs would be brittle on ESM
+  globals (consistent with T-08 + T-12 patterns).
+
+**Status**: L0 + L1 + L2 + L3 T-14 complete (T-01 ~ T-14). 185
+vitest specs PASS (169 prior + 16 new), tsc strict green. ADR count
+unchanged at 5.
+
+**Next**: T-15 (`src/io/emitters/json.ts` + `src/io/emitters/atomic.ts`
+— write to temp path + rename to final, AC-NF-7 atomic safety against
+concurrent runs, AC-001-4 clean report = empty results[]).

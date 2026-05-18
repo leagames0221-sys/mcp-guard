@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "local-fs": {
+      "command": "node",
+      "args": ["./server.js"]
+    },
+    "remote-sse": {
+      "url": "https://example.invalid/events"
+    }
+  }
+}

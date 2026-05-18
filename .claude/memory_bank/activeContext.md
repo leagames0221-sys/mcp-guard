@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer (T-10 ~ T-13 + T-13b paid-API budget guard, ADR-0006, AC-NF-8) completed (T-01 through T-13b, 2026-05-18).**
-**Next: L3 I/O (T-14 parsers → T-15 JSON emitter → T-16 SARIF emitter → T-17 console emitter); L2 + L3 were the parallelable pair, L2 is now drained.**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 T-14 .mcp.json parser completed (T-01 through T-14, 2026-05-18).**
+**Next: L3 T-15 JSON emitter → T-16 SARIF emitter → T-17 console emitter.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L3 I/O modules pending kickoff (T-14 ~ T-17); L2 LlmProvider layer fully drained including paid-API budget guard hardening (AC-NF-8, ADR-0006)
+- L3 T-15 (JSON emitter atomic) → T-16 (SARIF v2.1.0) → T-17 (console) next; T-14 parser landed
 
 ## Open questions
 

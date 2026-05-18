@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "remote-api": {
+      "url": "https://example.invalid/sse",
+      "transport": "sse",
+      "headers": {
+        "x-api-token": "redacted-fixture-token"
+      }
+    }
+  }
+}
