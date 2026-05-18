@@ -907,3 +907,101 @@ query string), and stdio `env` for credential-bearing keys without
 appears to be a real credential). Fixtures:
 `tests/fixtures/mcp/auth-gap-positive-*.json` (≥3) and
 `auth-gap-negative-*.json` (≥3).
+
+## 2026-05-18 — L4 T-21 auth-gap detector
+
+**Goal**: Light up the auth-gap registry slot. Decomposed prior art =
+OWASP API Top 10 (API2:2023 Broken Authentication + API8:2023 Security
+Misconfiguration) + detect-secrets / trufflehog vendor-prefix corpus.
+
+**Changed**:
+
+- **T-21**: src/scanners/auth-gap.ts — three pure functions
+  (`evaluateHttpAuthGap`, `evaluateStdioAuthGap`, dispatching
+  `evaluateAuthGap`) returning `RuleHit[]` (multi-hit per server),
+  plus `authGapScanner` registry entry. 5 rules:
+  - AUTH-GAP-URL-CREDENTIAL (high): URL has non-empty `username` or
+    `password` (userinfo embed) — leaks via access logs, HTTP referer,
+    redirect chains, and shell history.
+  - AUTH-GAP-NO-AUTHORIZATION (medium): http server targets a PUBLIC
+    host (NOT loopback / 127.0.0.0/8 / 10/8 / 172.16-31/12 / 192.168/16
+    / 169.254/16 / 100.64-127/10 / ::1 / localhost / 0.0.0.0) AND no
+    header key matches AUTH_HEADER_RE (auth/authorization/token/
+    api[_-]?key/x-api-key/credential/secret).
+  - AUTH-GAP-WEAK-BEARER (high): authorization header value matches
+    `^Bearer\s*$|^Bearer\s+(<…>|TODO|REPLACE|YOUR[-_]|xxx+|XXX+|
+    placeholder|change[-_]?me|fix[-_]?me|fill[-_]?me|insert[-_])` —
+    placeholder Bearer tokens fail auth or fall back to anonymous.
+  - AUTH-GAP-BASIC-AUTH-PLAINTEXT (high): authorization starts with
+    `Basic ` AND URL protocol is `http:` (no TLS) — base64 credential
+    trivially recoverable.
+  - AUTH-GAP-PLAINTEXT-CREDENTIAL (high): header value (Bearer-prefix
+    stripped) OR env value matches one of 12 vendor credential
+    signatures (GitHub PAT classic `ghp_`, fine-grained `github_pat_`,
+    OAuth `gho_`, server-to-server `ghs_`, GitLab `gls[ar]?[-_]`,
+    Anthropic `sk-ant-`, OpenAI project `sk-proj-`, OpenAI `sk-`, AWS
+    `AKIA` / STS `ASIA`, Slack `xox[abprs]-`, Google `AIza`). Env
+    interpolation (`${VAR}` / `$VAR`) and `redacted-*` fixture markers
+    are explicitly exempt via `isExemptValue()`.
+- src/scanners/index.ts — `createScannerRegistry()` now wires
+  `authGapScanner` into slot 2; slot 3 (supply-chain-risk) is the
+  last remaining stub pending T-22.
+- tests/fixtures/mcp/: 3 positive (auth-gap-positive-no-auth public
+  HTTPS no headers / auth-gap-positive-url-credential `https://admin:
+  hunter2@…` / auth-gap-positive-plaintext-credential stdio env with
+  fake-format `ghp_…` GitHub PAT) + 3 negative (auth-gap-negative-
+  with-auth proper Bearer + x-api-key with redacted-* placeholders /
+  auth-gap-negative-loopback http://localhost exempt / auth-gap-
+  negative-stdio-interp env with `${GITHUB_TOKEN}` and `redacted-*`).
+- tests/unit/scanners-auth-gap.test.ts — 64 specs covering: per-rule
+  flag/skip semantics (URL-CREDENTIAL 3 variants, NO-AUTHORIZATION 3
+  public + 8 non-public + 7 auth-header-key-variant skips, WEAK-BEARER
+  13 placeholder variants + 3 legitimate exemptions, BASIC-AUTH-PLAIN
+  http vs https split, PLAINTEXT-CREDENTIAL 5 header vendors + 6 env
+  vendors + 3 exempt-value cases), dispatch routing, Finding shape
+  (locator format: `mcpServers.<srv>.url` / `…headers.<key>` /
+  `…env.<key>`), Finding-id determinism, multi-server flatten with
+  expected-server-set assertion, fixture parser round-trip, registry
+  slot-2 wiring + slot-3-still-stub invariant.
+
+**Implementation Notes propagation**:
+- `isNonPublicHost()` is duplicated from ssrf.ts intentionally to keep
+  per-scanner blast radius bounded. If a third consumer appears (T-22
+  supply-chain-risk may also need it for "ephemeral hostname" rules),
+  extract to a shared `src/scanners/host-classification.ts` then.
+- Credential signatures use `\b` boundaries on both sides so fixture
+  placeholders embedded in longer paths (e.g. `/redacted-ghp_…/`)
+  match; the `{N,}` quantifiers leave room for vendors to extend key
+  lengths without losing detection. Google's `AIza` is special-cased
+  to exactly `{35}` because Google API keys are fixed-length 39.
+- `stripBearerPrefix()` lets `Authorization: Bearer ghp_<36>` fire
+  AUTH-GAP-PLAINTEXT-CREDENTIAL — the Bearer wrapper does NOT
+  laundry-launder a hardcoded vendor token. Tested with a 5-vendor
+  matrix in headers.
+- WEAK_BEARER_RE excludes `redacted-*` and `${VAR}` patterns by NOT
+  including them in the alternation. This is what lets `Bearer
+  redacted-fixture-token` pass cleanly across the entire test corpus
+  including pre-existing valid-http.json fixture.
+- ENV_INTERP_RE uses `^…$` (anchored both ends) so `${VAR}-suffix` is
+  treated as a real credential candidate — partial interpolation is
+  uncommon and usually a sign that someone tried to fix-up a real
+  credential rather than passthrough.
+- PLAINTEXT-CREDENTIAL fixture data was sized exactly to each vendor's
+  signature; the Google AIza key has `{35}\b` so the fixture string
+  must be exactly 4+35 chars. Initial test value had 4+39 chars and
+  was caught by the test failing — adjusted to 4+35 (`AIzaFixturePlace
+  holderGoogleKey01234567`) and passes.
+
+**Status**: L4 T-18 + T-19 + T-20 + T-21 complete. 415 vitest specs
+PASS (351 prior + 64 new), tsc strict green. ADR count unchanged
+at 5. mask:check passes on staged changes (66 tokens scanned).
+
+**Next**: T-22 supply-chain-risk detector + F-001 e2e (`src/scanners/
+supply-chain.ts` + `tests/e2e/scan.test.ts`) — flag unscoped npx
+package targets (typosquat surface), `npx -y` of low-trust scopes,
+http servers pointing to ephemeral / preview hostnames (vercel.app /
+ngrok / *.preview.* etc.). e2e generates synthetic 50-server `.mcp.
+json` and verifies scan completes < 60s (AC-001-1), SARIF output
+validates against vendored schema (AC-001-3), JSON report is clean
+or finding-shaped per spec (AC-001-4), and input file hash is
+unchanged pre/post scan (AC-001-5).

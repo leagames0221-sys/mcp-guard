@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "remote-no-auth": {
+      "url": "https://api.example.net/v1/mcp",
+      "transport": "sse"
+    }
+  }
+}

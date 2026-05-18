@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@example-org/mcp-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "NODE_ENV": "production"
+      }
+    },
+    "anthropic": {
+      "command": "uvx",
+      "args": ["mcp-anthropic"],
+      "env": {
+        "ANTHROPIC_API_KEY": "redacted-fixture-key"
+      }
+    }
+  }
+}

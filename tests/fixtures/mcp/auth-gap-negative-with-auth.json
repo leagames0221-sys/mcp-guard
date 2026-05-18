@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "vendor-a": {
+      "url": "https://mcp.vendor-a.example/sse",
+      "transport": "sse",
+      "headers": {
+        "authorization": "Bearer redacted-fixture-token"
+      }
+    },
+    "vendor-b": {
+      "url": "https://mcp.vendor-b.example/v1/",
+      "transport": "http",
+      "headers": {
+        "x-api-key": "redacted-fixture-key"
+      }
+    }
+  }
+}

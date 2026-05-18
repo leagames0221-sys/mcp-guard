@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 I/O layer (T-14 ~ T-17) + L4 T-18 registry + L4 T-19 SSRF + L4 T-20 command-injection detectors completed (T-01 through T-20, 2026-05-18).**
-**Next: T-21 auth-gap → T-22 supply-chain-risk + F-001 e2e.**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 I/O layer (T-14 ~ T-17) + L4 T-18 registry + L4 T-19 SSRF + L4 T-20 command-injection + L4 T-21 auth-gap detectors completed (T-01 through T-21, 2026-05-18).**
+**Next: T-22 supply-chain-risk detector + F-001 e2e.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L4 T-18 + T-19 + T-20 complete (SSRF + command-injection slots lit up; auth-gap/supply-chain still stubs); T-21 auth-gap next — flag http server `headers` field for missing/weak auth (no authorization header, bearer-prefix-but-empty, basic-auth in plaintext, fixture-token-like literal) + stdio `env` field for credential-bearing keys without `redacted-*` framing in `src/scanners/auth-gap.ts` + ≥3 positive/negative fixtures under `tests/fixtures/mcp/`
+- L4 T-18 + T-19 + T-20 + T-21 complete (SSRF + command-injection + auth-gap slots lit up; supply-chain still stub); T-22 supply-chain-risk next — flag stdio `command`/`args` for unscoped npx packages, single-letter `npx` names (typosquat risk), `npx -y` of unverified scoped packages, http servers pointing to ephemeral / preview hostnames + e2e `tests/e2e/scan.test.ts` that generates synthetic 50-server `.mcp.json`, measures scan time < 60s (AC-001-1 perf), validates SARIF schema (AC-001-3), confirms input file hash unchanged pre/post (AC-001-5)
 
 ## Open questions
 

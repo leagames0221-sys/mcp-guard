@@ -11,6 +11,7 @@ import {
 } from './types.js';
 import { ssrfScanner } from './ssrf.js';
 import { commandInjectionScanner } from './command-injection.js';
+import { authGapScanner } from './auth-gap.js';
 
 export { SCANNER_CATEGORIES, makeFindingId } from './types.js';
 export type { Scanner, ScanContext, ScannerCategory } from './types.js';
@@ -20,6 +21,12 @@ export {
   evaluateCommandInjection,
   type CmdInjInput,
 } from './command-injection.js';
+export {
+  authGapScanner,
+  evaluateAuthGap,
+  evaluateHttpAuthGap,
+  evaluateStdioAuthGap,
+} from './auth-gap.js';
 
 // Stub detector — kept private so the only export surface is the
 // registry factory. T-20..T-22 each lift one stub into its own file
@@ -41,7 +48,7 @@ export function createScannerRegistry(): Scanner[] {
   return [
     ssrfScanner,
     commandInjectionScanner,
-    makeStubScanner('auth-gap'),
+    authGapScanner,
     makeStubScanner('supply-chain-risk'),
   ];
 }
