@@ -1498,3 +1498,79 @@ serialize report → assert summary shape, AC-002-1 (≥ 30 + all
 categories), AC-002-5 (JSON-parseable + per-probe verdict +
 totals). e2e budget should be comfortable since the harness is
 in-process + mock provider is sub-millisecond per call.
+
+## 2026-05-19 — L5 T-27 F-002 e2e (L5 fully drained)
+
+**Goal**: Drive the full F-002 prompt-injection pipeline against the
+real `src/probes/owasp/` corpus end-to-end and assert every spec'd
+acceptance criterion at the integration level.
+
+**Changed**:
+
+- **T-27**: tests/e2e/inject.test.ts — 6 specs. Mirrors the F-001
+  e2e structure (real on-disk corpus + capture stream + assert
+  spec-mandated shape).
+  - **Spec 1 (AC-002-1)**: `loadProbeDirectory(src/probes/owasp/)`
+    returns ≥ 30 probes spanning all 10 OWASP_CATEGORIES (set-
+    membership check against every category literal).
+  - **Spec 2 (AC-002-2/3/5)**: full harness pass with explicit
+    MockLlmProvider — providerUsed='mock', fallbackToMock=false,
+    every `[i/N]` progress line emitted in order, totals.total ===
+    probes.length, totals.passed + totals.failed sum invariant,
+    per-result Verdict shape (boolean pass / number score in [0,1]
+    / non-empty reason / severity matches CATEGORY_SEVERITY lookup),
+    byCategory totals reconcile against per-result aggregation
+    (uses real verdicts not synthetic — actual coverage signal).
+    Wall-clock budget 10s (observed 161ms on dev hardware).
+  - **Spec 3 (AC-002-4)**: severity-floor override accepted +
+    shouldExitNonZero boolean-typed.
+  - **Spec 4 (AC-002-5)**: serializeHarnessReport produces JSON-
+    parseable output with `mcp-guard-harness-report@1` schema
+    marker, sourcePath absent from per-result keys (caller-local
+    data stripped at serialization boundary).
+  - **Spec 5 (AC-002-2)**: no-provider path autoselects mock +
+    emits "no provider supplied" stderr warning. Uses first 3
+    probes only — fallback contract exercised once at e2e level.
+  - **Spec 6 (determinism)**: two harness passes over same corpus
+    produce identical projected report (durationMs excluded, all
+    other fields included). Verifies sha256-keyed mock + pure-
+    function detectors compose into a reproducible pipeline.
+
+**Implementation Notes propagation**:
+- captureStream is a copy of the unit-test StubStream factory.
+  Considered shared helper module but the duplication is 12 lines
+  and lifting a "test stream" into src/ pollutes the production
+  tree; keeping the helper local to each test file matches the
+  F-001 e2e's "fixtures live next to their tests" stance.
+- Determinism spec excludes `durationMs` from the projection
+  because performance.now varies per-run; everything else is
+  pinned. Hashing the projection would be cheaper but
+  `toEqual` gives a more useful diff on mismatch.
+- byCategory reconciliation uses Array.filter against the real
+  per-result list rather than a recomputation — the test asserts
+  the runner's aggregation matches what the per-result data
+  actually says, which is the load-bearing invariant. If the
+  runner ever miscounts (e.g. off-by-one on category lookup),
+  this spec catches it directly.
+- E2E wall-clock ceiling 10_000ms is intentionally loose. 161ms
+  observed locally; CI on slow runners (GitHub Actions free tier
+  shared compute) needs ~60× headroom for safety. The F-001 e2e
+  uses 60s for actual disk + scan work; this one is in-process
+  with mock provider so 10s is already generous.
+
+**Status**: L5 fully drained — T-23 + T-24 + T-25 + T-26 + T-27
+all complete. F-002 feature-complete: 30-probe OWASP corpus + 3-
+detector verdict layer + sequential harness + e2e. AC-002-1
+through AC-002-5 all literally verified at unit + integration
+levels. 591 vitest specs PASS (585 prior + 6 e2e), tsc strict
+green. ADR count unchanged at 5. No new dependencies.
+
+**Next**: L6 Remediation engine.
+  - T-28 src/remediation/{index,templates}.ts — per-scanner-
+    category template ({severity, category, suggested_patch,
+    references[]}) with `source: template` label (AC-003-1 +
+    AC-003-3).
+  - T-29 LLM-enriched remediation + `mcp-guard suggest <report
+    .json>` subcommand (AC-003-2 + AC-003-4). Provider-available
+    path enriches the template output; provider-unavailable
+    falls back to template. Paid-API 6-layer defense unchanged.
