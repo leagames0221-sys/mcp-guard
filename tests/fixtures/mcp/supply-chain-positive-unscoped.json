@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "typosquat-target": {
+      "command": "npx",
+      "args": ["-y", "filesystem-mcp-server"]
+    }
+  }
+}

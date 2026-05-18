@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 I/O layer (T-14 ~ T-17) + L4 T-18 registry + L4 T-19 SSRF + L4 T-20 command-injection + L4 T-21 auth-gap detectors completed (T-01 through T-21, 2026-05-18).**
-**Next: T-22 supply-chain-risk detector + F-001 e2e.**
+**Phase 1 — L0 + L1 + L2 + L3 + L4 ALL COMPLETE (T-01 through T-22 + F-001 e2e, 2026-05-18). All 4 scanner detectors lit up, no stubs remaining.**
+**Next: L5 Probe/Detector/Harness layer (T-23 corpus loader → T-24 OWASP LLM01–10 probe corpus → T-25 detector layer → T-26 sequential harness → T-27 F-002 e2e).**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L4 T-18 + T-19 + T-20 + T-21 complete (SSRF + command-injection + auth-gap slots lit up; supply-chain still stub); T-22 supply-chain-risk next — flag stdio `command`/`args` for unscoped npx packages, single-letter `npx` names (typosquat risk), `npx -y` of unverified scoped packages, http servers pointing to ephemeral / preview hostnames + e2e `tests/e2e/scan.test.ts` that generates synthetic 50-server `.mcp.json`, measures scan time < 60s (AC-001-1 perf), validates SARIF schema (AC-001-3), confirms input file hash unchanged pre/post (AC-001-5)
+- L4 fully drained (T-18 registry + T-19 SSRF + T-20 command-injection + T-21 auth-gap + T-22 supply-chain-risk all lit up); F-001 e2e landed (50-server synthetic scan, 26ms actual vs 60s budget = 0.04% consumed). 493 vitest specs PASS. Next layer = L5 harness for F-002 (probe corpus + detector verdicts + sequential runner)
 
 ## Open questions
 

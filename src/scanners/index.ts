@@ -4,14 +4,11 @@
 // with a real detector in its own file.
 
 import type { Finding } from '../io/emitters/json.js';
-import {
-  type ScanContext,
-  type Scanner,
-  type ScannerCategory,
-} from './types.js';
+import { type ScanContext, type Scanner } from './types.js';
 import { ssrfScanner } from './ssrf.js';
 import { commandInjectionScanner } from './command-injection.js';
 import { authGapScanner } from './auth-gap.js';
+import { supplyChainScanner } from './supply-chain.js';
 
 export { SCANNER_CATEGORIES, makeFindingId } from './types.js';
 export type { Scanner, ScanContext, ScannerCategory } from './types.js';
@@ -27,29 +24,24 @@ export {
   evaluateHttpAuthGap,
   evaluateStdioAuthGap,
 } from './auth-gap.js';
-
-// Stub detector — kept private so the only export surface is the
-// registry factory. T-20..T-22 each lift one stub into its own file
-// (src/scanners/command-injection.ts etc.) and the registry import
-// is updated.
-function makeStubScanner(category: ScannerCategory): Scanner {
-  return {
-    category,
-    scan(_ctx: ScanContext): Finding[] {
-      return [];
-    },
-  };
-}
+export {
+  supplyChainScanner,
+  evaluateStdioSupplyChain,
+  evaluateHttpSupplyChain,
+  extractPackageSpec,
+  parsePackageSpec,
+} from './supply-chain.js';
 
 // Returns one Scanner per ScannerCategory in canonical order. The
 // returned array is fresh each call so callers may mutate / filter
-// without affecting other call sites.
+// without affecting other call sites. All 4 slots are real
+// detectors as of T-22 (no stubs remaining).
 export function createScannerRegistry(): Scanner[] {
   return [
     ssrfScanner,
     commandInjectionScanner,
     authGapScanner,
-    makeStubScanner('supply-chain-risk'),
+    supplyChainScanner,
   ];
 }
 

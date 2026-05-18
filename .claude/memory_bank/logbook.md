@@ -1005,3 +1005,118 @@ json` and verifies scan completes < 60s (AC-001-1), SARIF output
 validates against vendored schema (AC-001-3), JSON report is clean
 or finding-shaped per spec (AC-001-4), and input file hash is
 unchanged pre/post scan (AC-001-5).
+
+## 2026-05-18 — L4 T-22 supply-chain-risk detector + F-001 e2e
+
+**Goal**: Drain the last L4 detector slot + land the F-001 end-to-end
+test that exercises the full parser → scanners → emitter pipeline at
+the spec'd perf scale (50 servers).
+
+**Changed**:
+
+- **T-22**: src/scanners/supply-chain.ts — three pure helpers
+  (`extractPackageSpec`, `parsePackageSpec`, plus per-surface
+  `evaluateStdioSupplyChain` / `evaluateHttpSupplyChain`) and the
+  `supplyChainScanner` registry entry. 4 rules:
+  - SUPPLY-CHAIN-UNSCOPED-PACKAGE (medium, npm-ecosystem only):
+    npx / bunx / `pnpm dlx` target lacks `@scope/` prefix.
+    Explicitly skipped for `uvx` because PyPI has no scoping concept
+    (PEP 752 is draft only as of 2026-05).
+  - SUPPLY-CHAIN-UNPINNED-VERSION (medium): package-executor target
+    spec carries no `@<version>` pin, OR pins to `@latest`.
+  - SUPPLY-CHAIN-EPHEMERAL-HOST (medium): URL hostname matches 11
+    ephemeral / preview patterns (vercel.app, netlify.app, ngrok*,
+    *.preview.*, gitpod.io, repl.co, replit.dev, loca.lt,
+    trycloudflare.com, per-PR -pr-NN. patterns).
+  - SUPPLY-CHAIN-RAW-CONTENT (high): URL targets a raw-content CDN
+    (raw.githubusercontent.com, gist raw, raw.gitea.io, pastebin
+    /raw/ path, gitlab /raw/ path).
+- src/scanners/index.ts — `createScannerRegistry()` final shape
+  wires `supplyChainScanner` into slot 3; the private `makeStubScanner`
+  factory is now dead code and was removed (waste-zero principle).
+  All 4 slots are real detectors.
+- tests/fixtures/mcp/: 3 positive (unscoped npx target / vercel.app
+  preview / raw.githubusercontent.com) + 3 negative (scoped+pinned
+  npx + uvx pinned / corporate https / non-executor stdio with
+  node+python).
+- tests/unit/scanners-supply-chain.test.ts — 76 specs covering:
+  extractPackageSpec across 12 argv shapes including pnpm dlx +
+  positional resolution with -y/-p/--package=/--, parsePackageSpec
+  for scoped vs unscoped + version pin formats, UNSCOPED rule
+  scope (npm-only, PyPI exempt), UNPINNED rule across all executors
+  including @latest detection, EPHEMERAL host matching for 11
+  patterns + 3 corporate non-flag cases, RAW-CONTENT for 5 vendors
+  + non-raw GitHub + pastebin non-/raw/ path filtering, Finding
+  shape + determinism + multi-server flatten, fixture parser
+  round-trip per fixture, registry slot-3 wiring + final-shape
+  invariant (no stubs).
+- **F-001 e2e** (tests/e2e/scan.test.ts) — 2 specs that drive the
+  full pipeline through `mkdtemp` temp dirs:
+  - Clean 50-server config: 25 http (Bearer redacted-* token) + 25
+    stdio (npx -y @example-org/mcp-tool-N@1.0.N) → asserts elapsed
+    < 60_000ms (AC-001-1), isCleanReport == true + results: [] (AC-
+    001-4), SARIF version + $schema + runs[0].tool.driver.name +
+    rules[] array present + results: [] (AC-001-3), serialized JSON
+    round-trip parse-able, sha256+size+mtimeMs unchanged pre/post
+    (AC-001-5).
+  - Dirty 50-server config: every 5th entry intentionally risky
+    (per-PR vercel.app preview / unscoped pkg name) so emitter
+    finding-present path is exercised → asserts ≥ 40 findings, every
+    SARIF result.ruleId is in rules[] with correct ruleIndex,
+    partialFingerprints.mcpGuardFindingId matches /^[0-9a-f]{16}$/,
+    rules[] de-dup invariant (rules.length === unique ruleIds set),
+    severity→level mapping (critical/high→error, medium→warning),
+    hash + stat unchanged regardless of finding count.
+  - Actual elapsed time observed: 26ms for 50-server clean scan
+    (perf budget 60_000ms, 0.04% consumed) — leaves abundant headroom
+    for L5+ harness overhead and large real-world configs.
+
+**Implementation Notes propagation**:
+- `parsePackageSpec` splits on the rightmost `@` AFTER stripping the
+  leading scope-`@`. This correctly handles `@scope/pkg@1.2.3` →
+  `{name: '@scope/pkg', version: '1.2.3'}` without treating the scope
+  marker as a version separator. Tested against 7 spec variants.
+- `extractPackageSpec` returns the next arg literally for `-p` /
+  `--package` even if it would normally look like a flag value. This
+  matches npx's actual behaviour (it forwards whatever the operator
+  provided) and surfaces unusual cases for review rather than silently
+  swallowing them. The `uvx -p 3.11 mcp-server-fetch` case returns
+  `'3.11'` (the Python interpreter version arg) by this rule; it's
+  technically a false-positive surface but the alternative (deep argv
+  modelling per-executor) bloats far more than it saves. Documented
+  via test.
+- NPM_EXECUTORS subset (npx + bunx + pnpm-dlx) is what gates the
+  UNSCOPED rule. PyPI / Python tooling are exempt because npm-style
+  scoping is the only ecosystem where the prefix actually narrows the
+  typosquat search space; PyPI's flat namespace makes the rule
+  uninformative there. If a future ecosystem adopts scoping, it joins
+  this set.
+- EPHEMERAL_HOST_PATTERNS uses anchored `\.<domain>$` form so
+  `vercel.app.attacker.example.com` does NOT match (subdomain attack
+  surface) while `pr-42.app.vercel.app` does. The per-PR pattern
+  `-pr-\d+\.` is intentionally unanchored at the right so it works on
+  any base domain (`-pr-42.example.com`, `branch-pr-42.dev.org`).
+- RAW_CONTENT_PATTERNS distinguishes hostname-only entries (raw.* —
+  whole host implies raw) from hostname+path entries (pastebin.com,
+  gitlab.com — host is mixed-use, the `/raw/` path is the signal).
+- F-001 e2e uses `mkdtemp` for full isolation (no shared `tmp/`
+  pollution); each test gets its own temp dir so concurrent runs
+  cannot collide. Hash + stat captured via a single
+  `hashAndStat(path)` helper.
+- Dirty-config asserts the SARIF rules[] de-dup invariant explicitly
+  (rules.length === unique ruleIds set), which is the core property
+  that makes ruleIndex stable across re-runs of the same input — a
+  load-bearing assertion for GitHub code scanning UI ingestion
+  (AC-001-3 / AC-alpha-6 deferred).
+
+**Status**: L0 + L1 + L2 + L3 + L4 ALL DRAINED. 493 vitest specs
+PASS (415 prior + 76 T-22 unit + 2 F-001 e2e), tsc strict green.
+ADR count unchanged at 5. Scanner core (F-001) is feature-complete.
+
+**Next**: L5 Probe/Detector/Harness layer for F-002 (prompt-injection
+harness). T-23 src/probes/ corpus loader (YAML 1-probe-per-file per
+D-002 + corpus_version + owasp_category metadata per D-009) → T-24
+OWASP LLM01-10 probe corpus (≥ 30 probes spanning all 10 categories)
+→ T-25 src/detectors/ verdict layer (garak 3-layer pattern per
+ADR-0003 §4) → T-26 src/harness/ sequential executor (mock fallback
++ stderr progress + severity gate) → T-27 F-002 e2e.

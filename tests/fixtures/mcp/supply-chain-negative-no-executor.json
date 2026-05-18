@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "fs-tool": {
+      "command": "node",
+      "args": ["./dist/server.js", "--port", "3001"]
+    },
+    "python-tool": {
+      "command": "python",
+      "args": ["./run.py"]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "raw-gh": {
+      "url": "https://raw.githubusercontent.com/example-org/mcp-config/main/server.json",
+      "transport": "http",
+      "headers": {
+        "authorization": "Bearer redacted-fixture-token"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "preview-deploy": {
+      "url": "https://mcp-server-pr-42.vercel.app/sse",
+      "transport": "sse",
+      "headers": {
+        "authorization": "Bearer redacted-fixture-token"
+      }
+    }
+  }
+}
