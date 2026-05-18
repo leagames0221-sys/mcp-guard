@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.github.com/mcp",
+      "headers": {
+        "Authorization": "Bearer redacted-fixture-token",
+        "x-api-key": "redacted-fixture-api-key"
+      }
+    },
+    "claude-tools": {
+      "command": "node",
+      "args": ["./mcp-server.js"],
+      "env": {
+        "API_KEY": "${MCP_API_KEY}"
+      }
+    }
+  }
+}

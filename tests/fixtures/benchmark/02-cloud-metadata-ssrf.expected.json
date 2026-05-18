@@ -1,0 +1,4 @@
+{
+  "ruleIds": ["SSRF-CLOUD-METADATA"],
+  "note": "AWS IMDS endpoint over http. 169.254/16 is link-local so AUTH-GAP-NO-AUTHORIZATION does NOT fire (host falls in the auth-gap exempt range). SSRF-CLOUD-METADATA is the load-bearing finding."
+}

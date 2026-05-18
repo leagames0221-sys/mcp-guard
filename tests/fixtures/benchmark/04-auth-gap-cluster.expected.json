@@ -1,0 +1,9 @@
+{
+  "ruleIds": [
+    "AUTH-GAP-URL-CREDENTIAL",
+    "AUTH-GAP-WEAK-BEARER",
+    "AUTH-GAP-BASIC-AUTH-PLAINTEXT",
+    "AUTH-GAP-NO-AUTHORIZATION"
+  ],
+  "note": "Four auth-gap findings in one config. url-cred carries userinfo credentials and no Authorization header, so both AUTH-GAP-URL-CREDENTIAL and AUTH-GAP-NO-AUTHORIZATION fire on the same entry. weak-bearer = placeholder Bearer. basic-over-http = Basic over http."
+}

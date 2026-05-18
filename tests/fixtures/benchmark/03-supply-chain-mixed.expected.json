@@ -1,0 +1,8 @@
+{
+  "ruleIds": [
+    "SUPPLY-CHAIN-UNSCOPED-PACKAGE",
+    "SUPPLY-CHAIN-UNPINNED-VERSION",
+    "SUPPLY-CHAIN-EPHEMERAL-HOST"
+  ],
+  "note": "Mixed supply-chain risks: npx -y unscoped target pinned to @latest + vercel preview URL."
+}

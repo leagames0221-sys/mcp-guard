@@ -1,0 +1,8 @@
+{
+  "ruleIds": [
+    "CMDINJ-SHELL-INTERPRETER",
+    "CMDINJ-SHELL-METACHAR",
+    "CMDINJ-CURL-PIPE-SHELL"
+  ],
+  "note": "Two command-injection variants: sh -c wrapper with metachars + curl-pipe-shell."
+}

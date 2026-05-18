@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "unscoped-unpinned": {
+      "command": "npx",
+      "args": ["-y", "mcp-helper@latest"]
+    },
+    "ephemeral-host": {
+      "url": "https://my-pr-42.vercel.app/mcp",
+      "headers": { "Authorization": "Bearer redacted-fixture-token" }
+    }
+  }
+}

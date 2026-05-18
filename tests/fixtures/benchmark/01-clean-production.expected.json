@@ -1,0 +1,4 @@
+{
+  "ruleIds": [],
+  "note": "Clean production-shaped config: scoped + pinned would not apply here (no executor invocations), HTTPS with redacted-* placeholder credentials, env-var interpolation."
+}

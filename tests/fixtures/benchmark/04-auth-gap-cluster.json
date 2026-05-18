@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "url-cred": {
+      "url": "https://admin:hunter2@api.example.com/mcp"
+    },
+    "weak-bearer": {
+      "url": "https://api2.example.com/mcp",
+      "headers": { "Authorization": "Bearer <TODO>" }
+    },
+    "basic-over-http": {
+      "url": "http://legacy.example.com/mcp",
+      "headers": { "Authorization": "Basic YWRtaW46aHVudGVyMg==" }
+    }
+  }
+}
