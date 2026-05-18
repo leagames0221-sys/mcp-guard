@@ -185,3 +185,33 @@ does not warrant a new ADR (D-004 in ADR-0003 covers it).
 **Next**: T-11 (`src/providers/llm/mock.ts` — deterministic canned responses
 keyed by prompt hash, health() always true; AC-002-2 fallback, AC-NF-3 CI
 default no-network).
+
+## 2026-05-18 — L2 T-11 mock LLM provider
+
+**Goal**: Land the mandatory fallback provider — deterministic, in-process,
+satisfies AC-002-2 (mock fallback) + AC-NF-3 (CI default = no network).
+
+**Changed**:
+
+- **T-11**: src/providers/llm/mock.ts — `MockLlmProvider implements LlmProvider`;
+  name = 'mock'; generate() picks from an 8-entry canned response table
+  (4 safe / 4 flagged) indexed by `sha256(prompt)[0] mod 8`, so output is
+  reproducible across runs, machines, CI; health() always resolves true.
+  No network, no fs, no env reads — pure in-process. `MOCK_CANNED_RESPONSES`
+  re-exported as readonly string[] for downstream membership assertions.
+  Barrel src/providers/llm/index.ts re-exports the class + table.
+
+**Implementation Notes propagation**:
+- Modulo-bounded index against an 8-element tuple is always defined, but
+  noUncheckedIndexedAccess forces an explicit narrow; an unreachable throw
+  guards the sparse-table case.
+- AbortSignal in opts is accepted (type compliance with LlmGenerateOptions)
+  but no-op for the mock — there is no async work to cancel.
+
+**Status**: L0 + L1 + L2 T-10/T-11 complete. 119 vitest specs PASS (108
+prior + 11 new), tsc strict green. ADR count unchanged at 4.
+
+**Next**: T-12 (`src/providers/llm/ollama.ts` — stdlib `fetch` only, no
+SDK npm dep; `localhost:11434` default, `MCP_GUARD_OLLAMA_HOST` override;
+health() probes `/api/tags`, generate() POSTs `/api/generate` with model
+`gemma3:4b`; fall back to MockLlmProvider on connection refused).
