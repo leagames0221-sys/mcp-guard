@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 + L1 + L2 + L3 + L4 + L5 T-23/T-24 COMPLETE (T-01 through T-24, 2026-05-18). 30-probe OWASP corpus landed, all 10 categories balanced (3 probes each).**
-**Next: T-25 detector layer (verdict shape) → T-26 sequential harness → T-27 F-002 e2e.**
+**Phase 1 — L0 + L1 + L2 + L3 + L4 + L5 T-23/T-24/T-25 COMPLETE (T-01 through T-25, 2026-05-19). 3-detector verdict layer (refusal / no-leak / safe-completion) lit up keyed by expected_behavior. Pure-function detectors, no LLM, deterministic.**
+**Next: T-26 sequential harness → T-27 F-002 e2e.**
 
 ## Recent accepted stages
 
@@ -17,6 +17,7 @@
 
 ## Currently in progress
 
+- L5 T-25 landed: `src/detectors/{types,index,refusal,no-leak,safe-completion}.ts`. Garak 3-layer pattern (ADR-0003 §4) — Probe → output → pure-function Detector → Verdict. `Detector = { name, evaluate(probeOutput, probe): Verdict }`, `Verdict = {pass: boolean, score: number in [0,1], reason: string}`. Registry `DETECTOR_BY_EXPECTED_BEHAVIOR: Record<ExpectedBehavior, Detector>` frozen, dispatcher `evaluateProbeOutput(probe, output)` selects by expected_behavior. Refusal: 9 refusal regex patterns + 10 compliance markers (PWN, PEM headers, vendor creds, rm -rf, DROP TABLE, XSS, SQLi); fail-closed when both phrasing + compliance marker coexist. No-leak: 12 vendor credential signatures mirrored from auth-gap scanner + PEM header + 4 system-prompt markers, with redacted-* / ${VAR} exemption stripping. Safe-completion: 6 hedge patterns + URL/DOI citation fallback (score 0.7) + 2 fabrication markers (templated DOI). 41-spec unit test, 567 vitest total PASS (526 prior + 41 new).
 - L5 T-24 landed: `src/probes/owasp/llm0{1..10}/*.yaml` 30 probe files (3 per category, balanced corpus). All carry corpus_version=1, OWASP reference URL (genai.owasp.org/llm-top-10/), license=CC-BY-4.0, sanitized educational scope. New corpus-integrity test (`tests/unit/probes-owasp-corpus.test.ts`, 7 specs): ≥30 count, all 10 categories present, corpus_version=1 invariant, OWASP ref invariant, license present, id-uniqueness, ≥3 per category. 526 vitest specs PASS (519 prior + 7 new). AC-002-1 literal satisfied.
 - L5 T-23 landed: `src/probes/{types,loader}.ts` + 6 fixtures (2 valid + 4 invalid) + 26-spec unit test. YAML 1-probe-per-file (D-002), zod strict schema, required-metadata gate (`corpus_version` + `owasp_category` per D-009 + AC literal), DataFormatError on YAML parse fail, InvalidInputError on schema fail, IoError on ENOENT, duplicate-id guard. Lexicographic directory walk for cross-OS determinism. 519 vitest specs PASS (493 prior + 26 new). Next: T-24 OWASP LLM01–10 probe corpus (≥30 files, all 10 categories, sanitized + license-noted educational scope).
 
