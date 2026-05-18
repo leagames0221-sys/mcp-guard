@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 T-10/T-11/T-12 (interface + mock + ollama) completed (T-01 through T-12, 2026-05-18).**
-**Next: L2 T-13 paid-API, then L3 I/O (T-14 parsers → T-15 JSON emitter → T-16 SARIF emitter → T-17 console emitter).**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer (T-10 ~ T-13) completed (T-01 through T-13, 2026-05-18).**
+**Next: L3 I/O (T-14 parsers → T-15 JSON emitter → T-16 SARIF emitter → T-17 console emitter); L2 + L3 were the parallelable pair, L2 is now drained.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L2 T-13 (paid API env-var-gated) next; L3 I/O (T-14 ~ T-17) parallelable now that T-12 ollama has landed
+- L3 I/O modules pending kickoff (T-14 ~ T-17); L2 LlmProvider layer fully drained
 
 ## Open questions
 

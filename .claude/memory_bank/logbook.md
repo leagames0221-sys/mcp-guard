@@ -261,3 +261,66 @@ or when `MCP_GUARD_LLM_PROVIDER` is not explicitly set to the matching
 provider name; integration test stubbed via fetch stub so no real API
 call is ever made — AC-NF-1 + AC-NF-3 + cross-PJ Anthropic API auto-call
 ban per internal doctrine).
+
+## 2026-05-18 — L2 T-13 paid-API providers (Anthropic + OpenAI)
+
+**Goal**: Land the env-var-gated paid-API providers so the harness has a
+swap-in path for higher-quality inference when the operator opts in.
+Constructor-time AC-NF-1 gate is the load-bearing safety; AC-NF-3 is
+preserved by stubbing every fetch in tests so CI never reaches a real
+endpoint. Cross-PJ Anthropic auto-call ban honoured (no real keys, no
+real network).
+
+**Changed**:
+
+- **T-13a Anthropic**: src/providers/llm/anthropic.ts — AnthropicLlmProvider
+  with two-factor constructor gate: both `ANTHROPIC_API_KEY` and
+  `MCP_GUARD_LLM_PROVIDER='anthropic'` must be present, otherwise throws
+  ConfigError carrying `{ gate: 'AC-NF-1', missing: 'both' | 'provider_flag'
+  | 'api_key' }`. Default model = `claude-sonnet-4-6` (env-overridable via
+  constructor opts). generate() POSTs `https://api.anthropic.com/v1/messages`
+  with `x-api-key` + `anthropic-version: 2023-06-01` headers + Claude
+  Messages body shape (model + max_tokens + messages[]); temperature lifted
+  when set; AbortSignal forwarded. health() returns true post-construct
+  (constructed = configured; no cheap liveness probe, no billable probe).
+  Errors carry HTTP status + statusText only — API key never echoes into
+  error messages (verified by literal assertion in tests).
+- **T-13b OpenAI**: src/providers/llm/openai.ts — OpenAiLlmProvider with
+  the same two-factor gate against `OPENAI_API_KEY` and
+  `MCP_GUARD_LLM_PROVIDER='openai'`. Default model = `gpt-4o-mini`.
+  generate() POSTs `https://api.openai.com/v1/chat/completions` with
+  `Authorization: Bearer <key>` + chat.completions body shape
+  (model + messages[] + optional temperature + optional max_tokens).
+  health(), error policy, key-non-leak guarantee identical to Anthropic.
+- **Barrel**: src/providers/llm/index.ts now re-exports both classes +
+  their endpoint constants + default models + opts types.
+
+**Implementation Notes propagation**:
+- Env injection: constructor takes `(opts, env = process.env)`. Tests
+  pass explicit `env` objects so the gate is reproducible without
+  mutating real process.env. This mirrors how T-08 config injected
+  layer maps, keeping the codebase consistent.
+- Two-factor gate intentionally checks `missing: 'both'` first to give
+  the operator the most informative error in the cold-start path.
+- vitest 2.x `expect(fn).toThrow(/regex/)` matches against the Error's
+  message via `.test()`, which treats `API_KEY` (underscore) and
+  `API key` (space) as distinct — first-round regex `/API key/` failed
+  here; corrected to `/API_KEY/` to assert the literal env var name.
+- 23 vitest specs across both providers: gate matrix (4 cases × 2),
+  successful construct, opts override, health() = true, POST URL +
+  headers + body shape + default body fields, temperature/maxTokens
+  forwarding, AbortSignal forwarding, non-2xx throw without key leak,
+  malformed-response throw. Every fetch is stubbed; default beforeEach
+  installs a fetch that throws if invoked unintentionally, so any test
+  that forgets to stub trips a loud failure (AC-NF-3 self-check).
+
+**Status**: L0 + L1 + L2 complete (T-01 ~ T-13). 154 vitest specs PASS
+(131 prior + 23 new), tsc strict green. ADR count unchanged at 4 —
+D-004 in ADR-0003 already canonicalizes the four concrete impls T-13
+delivers the last two of.
+
+**Next**: L3 I/O — T-14 (`src/io/parsers/mcp-config.ts` round-tripping
+fixtures via T-09 validator; AC-001-2 invalid → exit 2 + structured
+error; AC-001-5 zero writes to input path), then T-15 (JSON emitter
+with atomic temp+rename for AC-NF-7), T-16 (SARIF v2.1.0 emitter),
+T-17 (console emitter).
