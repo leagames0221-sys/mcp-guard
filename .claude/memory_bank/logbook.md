@@ -215,3 +215,49 @@ prior + 11 new), tsc strict green. ADR count unchanged at 4.
 SDK npm dep; `localhost:11434` default, `MCP_GUARD_OLLAMA_HOST` override;
 health() probes `/api/tags`, generate() POSTs `/api/generate` with model
 `gemma3:4b`; fall back to MockLlmProvider on connection refused).
+
+## 2026-05-18 — L2 T-12 Ollama LLM provider
+
+**Goal**: Land the local-first Ollama provider — stdlib `fetch` only, no
+SDK npm dep (waste-zero principle); honest health() + generate(); AC-NF-5
+host containment delegated upstream to the config layer (already enforced
+by T-08: only `MCP_GUARD_OLLAMA_HOST` may override the localhost default).
+
+**Changed**:
+
+- **T-12**: src/providers/llm/ollama.ts — `OllamaLlmProvider implements
+  LlmProvider`; name = 'ollama'; constructor accepts `{ host?, model? }`
+  with defaults `http://localhost:11434` and `gemma3:4b` exported as
+  `DEFAULT_OLLAMA_HOST` / `DEFAULT_OLLAMA_MODEL`; health() GETs
+  `${host}/api/tags` and returns false on any failure (non-2xx OR fetch
+  rejection) without throwing; generate() POSTs `${host}/api/generate`
+  with `{model, prompt, stream:false}` body, lifts `temperature` and
+  `maxTokens` into Ollama's `options.{temperature, num_predict}` only
+  when set, forwards AbortSignal into the fetch init, throws with HTTP
+  context on non-2xx and with 'malformed response' on missing string
+  `response` field.
+
+**Implementation Notes propagation**:
+- AC-002-2 (fallback to mock if Ollama not running) is delegated to the
+  L5 harness layer per the AC wording 'THE SYSTEM SHALL fall back' — the
+  provider's job is honest health() = false on connection refused, which
+  the harness will use as the fallback trigger. Provider stays single-
+  responsibility (waste-zero principle).
+- AC-NF-5 host containment is structurally guaranteed by config layer:
+  config schema only accepts `http://localhost:11434` default or whatever
+  `MCP_GUARD_OLLAMA_HOST` resolves to. Provider trusts its constructed
+  host without re-validating, which keeps the URL validation single-
+  sourced and avoids divergence.
+- vi.spyOn(globalThis, 'fetch') is brittle with ESM globals in vitest 2.x;
+  swap `globalThis.fetch` directly in beforeEach/afterEach (mirrors the
+  pattern T-08 settled on for fs).
+
+**Status**: L0 + L1 + L2 T-10/T-11/T-12 complete. 131 vitest specs PASS
+(119 prior + 12 new), tsc strict green. ADR count unchanged at 4.
+
+**Next**: T-13 (`src/providers/llm/{anthropic,openai}.ts` — env-var-gated
+constructors that throw ConfigError when the API key env var is missing
+or when `MCP_GUARD_LLM_PROVIDER` is not explicitly set to the matching
+provider name; integration test stubbed via fetch stub so no real API
+call is ever made — AC-NF-1 + AC-NF-3 + cross-PJ Anthropic API auto-call
+ban per internal doctrine).
