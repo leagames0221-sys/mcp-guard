@@ -4,25 +4,25 @@
 
 ## Current phase
 
-**Phase 1 Spec-Driven Workflow — Stage 1 + 2 + 3 v2 Accepted (2026-05-18).**
-**Next: Stage 4 Tasks (WBS + Boundary/Depends + AC mapping).**
+**Phase 1 Spec-Driven Workflow — Stage 1 + 2 + 3 v2 + Stage 4 Tasks v2 Accepted (2026-05-18).**
+**Next: L0 Foundation kickoff (T-01 dependency adoption batch → T-02 toolchain → T-03 scripts → T-04 SECURITY.md → T-05 mask hook).**
 
 ## Recent accepted stages
 
 - Stage 1 Discovery: prior-art set (promptfoo + garak primary, llm-guard + agent-governance-toolkit reference) + stack (TS/Node 20 LTS + pnpm + vitest + commander + zod + Ollama gemma3:4b) + integration approach
 - Stage 2 Requirements: 31 EARS AC (F-001~F-005 + 7 NF)
 - Stage 3 Design v2: 11 tradeoffs (D-001~D-011), 4 new modules (config / logger / errors / scanners/mcp-schema), independent review 9 gaps integrated
+- Stage 4 Tasks v2: 39 tasks across 9 layers (L0~L9), all 31 AC + 11 tradeoffs + 8 Phase α AC literal mapped; 6-point objective-evaluation patch round applied (lint tool drop, commander built-in did-you-mean, yaml dep adopted, ADR count to 5 via T-09 + T-38, AC-α-2 stream condition wording, vitest coverage thresholds in T-02)
 - ADR-0003 (consolidated Stage 1-3 decisions) committed
 
 ## Currently in progress
 
-- Stage 4 Tasks pending user approval to launch
-- Phase 1 implementation kickoff blocked on Stage 4 approval
+- L0 Foundation kickoff (T-01 ~ T-05)
 
 ## Open questions
 
-- gemma3:4b inference quality for prompt-injection detection — to be measured in Phase 1 benchmark task
-- MCP spec upstream commit pin selection for D-008 frozen vendor snapshot
+- gemma3:4b inference quality for prompt-injection detection — to be measured in Phase 1 benchmark task (T-38)
+- MCP spec upstream commit pin selection for D-008 frozen vendor snapshot — to be resolved at T-09 via ADR-0005
 
 ## Blockers
 
