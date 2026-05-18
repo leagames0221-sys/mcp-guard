@@ -20,12 +20,13 @@ repos:
     hooks:
       - id: gitleaks
 
-  # Channel B forbidden token mask (Phase 0.1 — local script, activated after scripts/precommit_mask_check.sh lands)
-  # - repo: local
-  #   hooks:
-  #     - id: forbidden-token-mask
-  #       name: Channel B forbidden token mask
-  #       entry: scripts/precommit_mask_check.sh
-  #       language: script
-  #       pass_filenames: false
-  #       always_run: true
+  # Channel B forbidden token mask (T-05 wired, scans staged diff against
+  # gitignored .claude/internal_notes.md mask list, fails closed if missing)
+  - repo: local
+    hooks:
+      - id: forbidden-token-mask
+        name: Channel B forbidden token mask
+        entry: pnpm mask:check
+        language: system
+        pass_filenames: false
+        always_run: true
