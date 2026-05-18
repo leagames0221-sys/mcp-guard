@@ -5,15 +5,18 @@
 // stubbing fetch in tests.
 
 import { ConfigError } from '../../errors/index.js';
+import { PaidApiBudget } from './budget.js';
 import type { LlmGenerateOptions, LlmProvider } from './types.js';
 
 export const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 export const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
+export const OPENAI_DEFAULT_MAX_TOKENS = 1024;
 
 export interface OpenAiProviderOptions {
   apiKey?: string;
   model?: string;
   providerFlag?: string;
+  budget?: PaidApiBudget;
 }
 
 interface OpenAiChatChoice {
@@ -27,6 +30,7 @@ interface OpenAiChatResponse {
 export class OpenAiLlmProvider implements LlmProvider {
   readonly name = 'openai' as const;
   readonly model: string;
+  readonly budget: PaidApiBudget;
   readonly #apiKey: string;
 
   constructor(opts: OpenAiProviderOptions = {}, env: NodeJS.ProcessEnv = process.env) {
@@ -57,6 +61,7 @@ export class OpenAiLlmProvider implements LlmProvider {
 
     this.#apiKey = apiKey as string;
     this.model = opts.model ?? OPENAI_DEFAULT_MODEL;
+    this.budget = opts.budget ?? new PaidApiBudget({}, env);
   }
 
   async health(): Promise<boolean> {
@@ -64,6 +69,9 @@ export class OpenAiLlmProvider implements LlmProvider {
   }
 
   async generate(prompt: string, opts?: LlmGenerateOptions): Promise<string> {
+    const maxTokens = opts?.maxTokens ?? OPENAI_DEFAULT_MAX_TOKENS;
+    this.budget.reserve(maxTokens);
+
     const body: Record<string, unknown> = {
       model: this.model,
       messages: [{ role: 'user', content: prompt }],

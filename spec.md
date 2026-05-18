@@ -94,6 +94,7 @@
 - **AC-NF-5** (privacy): WHILE Ollama is the active provider THE SYSTEM SHALL never transmit user input outside `localhost:11434` (or the configured `MCP_GUARD_OLLAMA_HOST`)
 - **AC-NF-6** (compat): WHERE the host OS is macOS / Linux / Windows THE SYSTEM SHALL execute all subcommands without OS-specific code paths failing (verified by CI matrix)
 - **AC-NF-7** (concurrency): IF 2+ instances run concurrently THEN THE SYSTEM SHALL use process-unique temp file names AND not block on shared lockfiles AND not corrupt shared output destinations (atomic rename for emitters)
+- **AC-NF-8** (cost containment): WHILE a paid LLM provider is active THE SYSTEM SHALL enforce three ceilings on every `generate()` call as a pre-flight reserve: per-call `max_tokens` (default 1024), per-process cumulative tokens (default 50,000), and per-process call count (default 50). Each ceiling is overridable via `MCP_GUARD_LLM_MAX_TOKENS_PER_CALL` / `MCP_GUARD_LLM_MAX_TOKENS_PER_RUN` / `MCP_GUARD_LLM_MAX_CALLS_PER_RUN`. When any ceiling is exceeded THE SYSTEM SHALL throw `ConfigError` BEFORE invoking `fetch`. Once any ceiling has fired THE SYSTEM SHALL poison the budget so that all subsequent calls in the same process throw without re-checking individual ceilings (defense-in-depth against attacker-driven runaway cost).
 
 ## Tradeoffs (Stage 3 Design、 11 件 D-001 〜 D-011、 ADR-0003 §5)
 

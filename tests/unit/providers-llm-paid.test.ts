@@ -8,6 +8,7 @@ import {
   OpenAiLlmProvider,
   OPENAI_API_URL,
   OPENAI_DEFAULT_MODEL,
+  PaidApiBudget,
   type LlmProvider,
 } from '../../src/providers/llm/index.js';
 import { ConfigError } from '../../src/errors/index.js';
@@ -90,6 +91,7 @@ describe('AnthropicLlmProvider — AC-NF-1 gate', () => {
     const _typed: LlmProvider = p;
     expect(_typed.name).toBe('anthropic');
     expect(p.model).toBe(ANTHROPIC_DEFAULT_MODEL);
+    expect(p.budget).toBeInstanceOf(PaidApiBudget);
   });
 
   it('opts override env (test ergonomics — explicit > env)', () => {
@@ -103,8 +105,13 @@ describe('AnthropicLlmProvider — AC-NF-1 gate', () => {
 });
 
 describe('AnthropicLlmProvider — generate() (stubbed fetch)', () => {
-  function build(): AnthropicLlmProvider {
-    return new AnthropicLlmProvider({ apiKey: 'sk-test', providerFlag: 'anthropic' });
+  function build(budget?: PaidApiBudget): AnthropicLlmProvider {
+    const opts: ConstructorParameters<typeof AnthropicLlmProvider>[0] = {
+      apiKey: 'sk-test',
+      providerFlag: 'anthropic',
+    };
+    if (budget) opts.budget = budget;
+    return new AnthropicLlmProvider(opts);
   }
 
   it('health() resolves true (configured = ready, no live probe)', async () => {
@@ -178,6 +185,34 @@ describe('AnthropicLlmProvider — generate() (stubbed fetch)', () => {
     stubFetch(async () => new Response(JSON.stringify({ content: [{ type: 'image' }] }), { status: 200 }));
     await expect(build().generate('x')).rejects.toThrow(/malformed response/);
   });
+
+  it('reserves budget before fetch — exhausted budget blocks fetch (AC-NF-8)', async () => {
+    let fetchCalls = 0;
+    stubFetch(async () => {
+      fetchCalls += 1;
+      return new Response(JSON.stringify({ content: [{ type: 'text', text: 'x' }] }), { status: 200 });
+    });
+    // 1-call budget. The first generate consumes it; the second must throw
+    // BEFORE fetch is reached.
+    const budget = new PaidApiBudget({ maxCalls: 1, maxTokensPerCall: 1024, maxTokensPerRun: 99_999 });
+    const p = build(budget);
+    await p.generate('first');
+    expect(fetchCalls).toBe(1);
+    await expect(p.generate('second')).rejects.toThrow(/per-process call ceiling/);
+    expect(fetchCalls).toBe(1); // still 1 — fetch was never called the 2nd time
+  });
+
+  it('per-call token ceiling rejects oversized maxTokens before fetch', async () => {
+    let fetchCalls = 0;
+    stubFetch(async () => {
+      fetchCalls += 1;
+      return new Response(JSON.stringify({ content: [{ type: 'text', text: 'x' }] }), { status: 200 });
+    });
+    const budget = new PaidApiBudget({ maxCalls: 99, maxTokensPerCall: 100, maxTokensPerRun: 99_999 });
+    const p = build(budget);
+    await expect(p.generate('hi', { maxTokens: 500 })).rejects.toThrow(/per-call token ceiling/);
+    expect(fetchCalls).toBe(0);
+  });
 });
 
 // ---------- OpenAiLlmProvider gate ----------
@@ -232,8 +267,13 @@ describe('OpenAiLlmProvider — AC-NF-1 gate', () => {
 });
 
 describe('OpenAiLlmProvider — generate() (stubbed fetch)', () => {
-  function build(): OpenAiLlmProvider {
-    return new OpenAiLlmProvider({ apiKey: 'sk-test', providerFlag: 'openai' });
+  function build(budget?: PaidApiBudget): OpenAiLlmProvider {
+    const opts: ConstructorParameters<typeof OpenAiLlmProvider>[0] = {
+      apiKey: 'sk-test',
+      providerFlag: 'openai',
+    };
+    if (budget) opts.budget = budget;
+    return new OpenAiLlmProvider(opts);
   }
 
   it('health() resolves true (configured = ready)', async () => {
@@ -304,5 +344,31 @@ describe('OpenAiLlmProvider — generate() (stubbed fetch)', () => {
   it('throws on malformed response', async () => {
     stubFetch(async () => new Response(JSON.stringify({ choices: [] }), { status: 200 }));
     await expect(build().generate('x')).rejects.toThrow(/malformed response/);
+  });
+
+  it('reserves budget before fetch — exhausted budget blocks fetch (AC-NF-8)', async () => {
+    let fetchCalls = 0;
+    stubFetch(async () => {
+      fetchCalls += 1;
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'x' } }] }), { status: 200 });
+    });
+    const budget = new PaidApiBudget({ maxCalls: 1, maxTokensPerCall: 1024, maxTokensPerRun: 99_999 });
+    const p = build(budget);
+    await p.generate('first');
+    expect(fetchCalls).toBe(1);
+    await expect(p.generate('second')).rejects.toThrow(/per-process call ceiling/);
+    expect(fetchCalls).toBe(1);
+  });
+
+  it('per-call token ceiling rejects oversized maxTokens before fetch', async () => {
+    let fetchCalls = 0;
+    stubFetch(async () => {
+      fetchCalls += 1;
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'x' } }] }), { status: 200 });
+    });
+    const budget = new PaidApiBudget({ maxCalls: 99, maxTokensPerCall: 100, maxTokensPerRun: 99_999 });
+    const p = build(budget);
+    await expect(p.generate('hi', { maxTokens: 500 })).rejects.toThrow(/per-call token ceiling/);
+    expect(fetchCalls).toBe(0);
   });
 });

@@ -9,16 +9,19 @@
 // `globalThis.fetch` to keep CI traffic at zero.
 
 import { ConfigError } from '../../errors/index.js';
+import { PaidApiBudget } from './budget.js';
 import type { LlmGenerateOptions, LlmProvider } from './types.js';
 
 export const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 export const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-4-6';
 export const ANTHROPIC_API_VERSION = '2023-06-01';
+export const ANTHROPIC_DEFAULT_MAX_TOKENS = 1024;
 
 export interface AnthropicProviderOptions {
   apiKey?: string;
   model?: string;
   providerFlag?: string;
+  budget?: PaidApiBudget;
 }
 
 interface AnthropicContentBlock {
@@ -33,6 +36,7 @@ interface AnthropicMessagesResponse {
 export class AnthropicLlmProvider implements LlmProvider {
   readonly name = 'anthropic' as const;
   readonly model: string;
+  readonly budget: PaidApiBudget;
   readonly #apiKey: string;
 
   constructor(opts: AnthropicProviderOptions = {}, env: NodeJS.ProcessEnv = process.env) {
@@ -63,6 +67,7 @@ export class AnthropicLlmProvider implements LlmProvider {
 
     this.#apiKey = apiKey as string;
     this.model = opts.model ?? ANTHROPIC_DEFAULT_MODEL;
+    this.budget = opts.budget ?? new PaidApiBudget({}, env);
   }
 
   // Anthropic does not expose a cheap liveness probe and any call is
@@ -73,9 +78,12 @@ export class AnthropicLlmProvider implements LlmProvider {
   }
 
   async generate(prompt: string, opts?: LlmGenerateOptions): Promise<string> {
+    const maxTokens = opts?.maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS;
+    this.budget.reserve(maxTokens);
+
     const body: Record<string, unknown> = {
       model: this.model,
-      max_tokens: opts?.maxTokens ?? 1024,
+      max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     };
     if (opts?.temperature !== undefined) body.temperature = opts.temperature;

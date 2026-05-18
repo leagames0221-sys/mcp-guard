@@ -19,3 +19,11 @@ export {
   OPENAI_DEFAULT_MODEL,
   type OpenAiProviderOptions,
 } from './openai.js';
+export {
+  PaidApiBudget,
+  DEFAULT_MAX_CALLS_PER_RUN,
+  DEFAULT_MAX_TOKENS_PER_CALL,
+  DEFAULT_MAX_TOKENS_PER_RUN,
+  type PaidApiBudgetOptions,
+  type PaidApiBudgetSnapshot,
+} from './budget.js';

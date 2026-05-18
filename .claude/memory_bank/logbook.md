@@ -324,3 +324,81 @@ fixtures via T-09 validator; AC-001-2 invalid → exit 2 + structured
 error; AC-001-5 zero writes to input path), then T-15 (JSON emitter
 with atomic temp+rename for AC-NF-7), T-16 (SARIF v2.1.0 emitter),
 T-17 (console emitter).
+
+## 2026-05-18 — L2 T-13b paid-API budget guard (AC-NF-8, ADR-0006)
+
+**Goal**: Bolt a pre-flight reserve guard onto the paid-API providers so an
+attacker (or a buggy harness loop) cannot drive runaway cost even after the
+constructor gate (AC-NF-1) has passed. Operator flagged this in response to
+in-the-wild malware on Japanese consumer endpoints targeting developer API
+credentials for unauthorized billing.
+
+**Changed**:
+
+- **spec.md**: Added AC-NF-8 to § Non-functional cross-cutting. Three
+  simultaneous ceilings (per-call max_tokens, per-process cumulative
+  tokens, per-process call count) enforced before fetch; once any
+  fires the budget poisons and refuses all further calls.
+- **docs/adr/0006-paid-api-budget-guard.md**: Threat model (compromised
+  host driving cost + buggy harness loop), decision (PaidApiBudget
+  multi-ceiling reserve), tradeoffs (hand-rolled vs LangChain Budget;
+  per-instance vs process-scoped; max_tokens-only vs precise input-
+  token estimation), defaults rationale (50 calls × 1024 tokens-per-
+  call × 50,000 tokens-per-run sits well under "1 USD" on every tier-1
+  paid provider at time of writing). Non-goals: per-second rate limit,
+  cross-process spend tracking.
+- **src/providers/llm/budget.ts**: PaidApiBudget class (~145 LOC inc.
+  validation). reserve(tokensRequested) is synchronous arithmetic +
+  poisoning. snapshot() exposes read-only counters for logging /
+  telemetry. Env override per ceiling via MCP_GUARD_LLM_MAX_*; env
+  values must parse as positive integers, otherwise ConfigError at
+  construction. parsePositiveInt rejects '0', negatives, floats,
+  alphabetic strings.
+- **src/providers/llm/anthropic.ts**: Constructor now owns a
+  PaidApiBudget (default = env-driven, override via opts.budget for
+  tests / harness composition). generate() calls budget.reserve(
+  maxTokens) BEFORE fetch — failure throws ConfigError pre-network.
+  Default max_tokens hoisted to ANTHROPIC_DEFAULT_MAX_TOKENS = 1024.
+- **src/providers/llm/openai.ts**: Same shape — generate() reserves
+  before fetch; OPENAI_DEFAULT_MAX_TOKENS = 1024.
+- **src/providers/llm/index.ts**: Re-exports PaidApiBudget + defaults
+  + snapshot type.
+- **tests/unit/providers-llm-budget.test.ts**: 11 specs covering
+  defaults, env overrides for all three ceilings, env validation
+  rejections (0/-1/abc/1.5), opts > env precedence, happy-path
+  state tracking, non-positive-integer reserve rejection, each
+  ceiling firing individually + poisoning the rest, exact-threshold
+  semantics (===  passes, > fails), ConfigError detail shape.
+- **tests/unit/providers-llm-paid.test.ts**: +4 integration specs —
+  build() helper now accepts an optional budget; new tests confirm
+  budget.reserve() runs BEFORE fetch (exhausted budget leaves
+  fetchCalls counter unchanged on the blocked call) for both
+  Anthropic and OpenAI; per-call token ceiling rejects oversized
+  maxTokens before any fetch.
+
+**Implementation Notes propagation**:
+- The budget is per-provider-instance by default. Harness composition
+  (L5+) will inject a single shared budget into all paid providers
+  spawned within one process so the ceilings cap the *process*, not
+  the *provider* — otherwise an attacker constructing N providers
+  could multiply the budget. That wiring happens at T-30, not here.
+- Reserve uses `maxTokens` (the operator-visible output cap) rather
+  than an estimated input-token count. Input tokens are typically
+  the cheaper half of chat-completion billing; precise tokenization
+  is per-model and would force a tokenizer dependency. Deferred to
+  Phase β.
+- Once a ceiling fires the budget is poisoned irreversibly within
+  that process. There is no "reset()" — the only way out is a new
+  process (which forces a fresh AC-NF-1 gate too).
+
+**Status**: L0 + L1 + L2 (T-10 ~ T-13 + T-13b) complete. 169 vitest
+specs PASS (154 prior + 15 new), tsc strict green. ADR count now 5
+(0001/0002/0003/0005/0006). Paid-API path: constructor gate + pre-
+flight reserve + key-non-leak in errors + zero auto-call in CI tests,
+all stacked.
+
+**Next**: L3 I/O — T-14 (`src/io/parsers/mcp-config.ts` using T-09
+validator; AC-001-2 invalid → exit 2 + structured error; AC-001-5
+zero writes to input path), then T-15 (JSON emitter atomic temp+
+rename for AC-NF-7), T-16 (SARIF v2.1.0 emitter), T-17 (console
+emitter).
