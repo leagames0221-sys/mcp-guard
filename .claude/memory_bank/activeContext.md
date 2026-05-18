@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation completed (T-01 through T-05, 2026-05-18).**
-**Next: L1 Cross-cutting modules (T-06 errors → T-07 logger → T-08 config → T-09 mcp-schema).**
+**Phase 1 — L0 Foundation + L1 Cross-cutting completed (T-01 through T-09, 2026-05-18).**
+**Next: L2 LlmProvider (T-10 interface → T-11 mock → T-12 ollama → T-13 paid-API) and L3 I/O (T-14 parsers → T-15 JSON emitter → T-16 SARIF emitter → T-17 console emitter), parallelable after L1.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L1 Cross-cutting modules pending kickoff (T-06 ~ T-09)
+- L2 LlmProvider + L3 I/O modules pending kickoff (T-10 ~ T-17)
 
 ## Open questions
 

@@ -106,3 +106,58 @@ mask hook active and proven (block + pass paths both smoke-tested).
 T-07 (src/logger/ + ANSI sanitize), T-08 (src/config/ + zod schemas), T-09
 (src/scanners/mcp-schema/ + ADR-0005 upstream pin). T-06 depends on T-02
 (already complete); T-07 same; T-08 depends on T-06+T-07; T-09 depends on T-08.
+
+## 2026-05-18 — L1 Cross-cutting modules completed (T-06 through T-09)
+
+**Goal**: Land every L1 task end-to-end with verification + commit per task.
+
+**Changed**:
+
+- **T-06 (commit d63e1c6)**: src/errors/{types,index}.ts typed hierarchy
+  with 7 McpGuardError subclasses (FindingsExceedThresholdError exit 1,
+  InvalidInputError 2, UsageError 64, DataFormatError 65, InternalError 70,
+  IoError 74, ConfigError 78) + resolveExitCode() helper; docs/EXIT_CODES.md
+  canonical mapping table; 21 vitest specs including literal doc <-> code
+  equivalence check (drift-resistant)
+- **T-07 (commit 8033004)**: src/logger/sanitize.ts ANSI escape + control-
+  char stripper covering CSI / OSC / nF / Fp+Fe+Fs single-byte forms;
+  src/logger/index.ts level-filtered Logger with debug/info/warn/error/
+  progress methods, configurable WritableStream, all emission sanitized;
+  22 vitest specs across hostile-payload sanitization and level filtering
+- **T-08 (commit eb4330f)**: src/config/{schema,precedence,index}.ts +
+  src/types/index.ts; zod schemas with built-in defaults (mock LLM, severity
+  high, output json, log info, ollama localhost:11434, gemma3:4b); merge
+  CLI > env > file > defaults; envToLayer maps MCP_GUARD_* env vars;
+  readConfigFile rejects .env/.envrc/.netrc basenames BEFORE any fs call
+  (AC-NF-2 architectural guarantee); enforcePaidApiGate (AC-NF-1) rejects
+  anthropic/openai without matching env key; 26 vitest specs
+- **T-09 (commit fdd2f80)**: docs/adr/0005-mcp-spec-upstream-pin.md (canonical
+  upstream + initial-pin placeholder + drift workflow + re-pin contract);
+  src/scanners/mcp-schema/{snapshot.json,upstream-commit.txt,validator.ts};
+  scripts/update-mcp-schema.ts (default-write + --check modes);
+  .github/workflows/mcp-schema-drift.yml (weekly cron + push trigger,
+  uploads drift report on failure); parseMcpConfig() maps structural
+  failures to DataFormatError (exit 65) and schema failures to
+  InvalidInputError (exit 2) per AC-001-2; 17 vitest specs including
+  snapshot <-> zod equivalence + pin format validation
+
+**Implementation Notes propagation**:
+- ConfigLayer's DeepPartial uses `T extends object` not Record<string,unknown>
+  so zod-derived schemas with strict shapes still recurse correctly.
+- vi.spyOn(fs, '...') is incompatible with ESM-frozen modules in vitest 2.x;
+  prefer behavioral assertions over namespace spies. AC-NF-2 verified by
+  the architectural guarantee (basename check precedes fs ops) + a
+  behavioral test asserting ConfigError with 'reserved for credentials'
+  message before any read.
+- Initial MCP spec pin is deferred to first CI run of mcp-schema-drift
+  workflow per ADR-0005 §2; placeholder makes that no-fail. Subsequent
+  runs gate strictly.
+
+**Status**: L0 + L1 complete. Repo state: 11 task commits + 1 Stage 4
+approval commit. 97 vitest specs PASS, all typecheck green. ADR count
+now 4 (0001/0002/0003/0005); T-38 ADR-0004 (Golf Scanner audit) will
+reach 5 at L9.
+
+**Next**: L2 LlmProvider (T-10 interface, T-11 mock, T-12 ollama, T-13
+paid-API) and L3 I/O (T-14 parsers, T-15 JSON, T-16 SARIF, T-17 console).
+L2 + L3 are parallelable once L1 lands.
