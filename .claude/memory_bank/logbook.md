@@ -1805,3 +1805,115 @@ tsc strict green. ADR count unchanged at 5. No new dependencies.
     showSuggestionAfterError() (AC-005-3 ≤ 3 distance, D-001).
   - T-32: src/cli/node-version-check.ts as first executable line
     (AC-005-5 + AC-005-6 exit-code wire-up).
+
+## 2026-05-19 — L7 T-30 + T-31 + T-32 CLI wire-up (L7 fully drained)
+
+**Goal**: Wire scan / inject / suggest into a commander program with
+did-you-mean and a Node version gate. L7 lands as one commit because
+T-30/31/32 share the same entry file and exit-code-mapping logic.
+
+**Changed**:
+
+- **T-32** (`src/cli/node-version-check.ts`, AC-005-5 + AC-005-6):
+  - `parseMajor(versionString)` parses `vMAJOR.MINOR.PATCH` (or
+    bare `MAJOR.MINOR.PATCH`) and returns NaN on garbage input.
+  - `checkNodeVersion(versionString)`: passes iff major ≥ 20.
+    Returns `NodeVersionCheckResult {ok, observed, observedMajor,
+    exitCode, message?}`. Failure → exitCode=ConfigError(78) +
+    actionable message naming nodejs.org. Defensive narrow on
+    unparseable input fails closed.
+  - `enforceNodeVersion(versionString, stderr?)`: convenience
+    wrapper that writes the error message to stderr on failure;
+    invoked as the first executable statement of `main()`.
+- **T-30 scan** (`src/cli/scan.ts`):
+  - `runScan({config, format, output?, failOnSeverity, ...})`
+    composes T-14 parser → T-18-22 scanners (runAllScanners) →
+    T-15/16/17 emitters. Threshold gate compares each finding's
+    SEVERITY_ORDER lookup against the configured floor (default
+    high); any finding at-or-above → exit 1 (FindingsExceedThreshold).
+  - Format dispatch: console → stdout via renderReport(); json/sarif
+    → file via emitJsonReport/emitSarifReport when --output set,
+    else stdout via the serialize helper.
+- **T-30 inject** (`src/cli/inject.ts`):
+  - `runInject({corpusDir?, provider?, severityFloor?, ...})` defaults
+    corpus to `src/probes/owasp/` (bundled). Composes T-23 loader →
+    T-26 harness → serializeHarnessReport to stdout. exit gate maps
+    `report.shouldExitNonZero` → FindingsExceedThreshold(1).
+  - Paid-API 6-layer load-bearing: this subcommand NEVER constructs
+    a paid provider; opts.provider is the only escape and the
+    default `undefined` lets the harness auto-select MockLlmProvider.
+- **T-30 + T-31 entry** (`src/cli/index.ts`):
+  - First executable line of `main()`: `enforceNodeVersion`.
+  - `buildProgram(version)` returns a commander Program with:
+    - `.name('mcp-guard')` + `.description(...)` + `.version(version)`
+      (AC-005-4 — version sourced from package.json at startup).
+    - `.showSuggestionAfterError(true)` (T-31, AC-005-3 — commander's
+      built-in Levenshtein ≤ 3 suggestion).
+    - Three subcommands registered in canonical order: `scan <config>`
+      with --format/--output/--fail-on-severity, `inject` with
+      --corpus/--severity-floor, `suggest <report>`.
+    - Each subcommand carries `.addHelpText('after', '\nExamples:\n
+      ...\n')` listing 2-3 usage examples (AC-005-1). Note: commander
+      v13 quirk — addHelpText only renders via outputHelp(), NOT
+      helpInformation(); tests captured via configureOutput buffers.
+  - `main(argv)` wraps `program.parseAsync` in try/catch:
+    - `McpGuardError` instance → exit code from `.exitCode`.
+    - commander CommanderError exposes its own `exitCode` field
+      (usage / validator failures) → respected.
+    - Unknown thrown values → resolveExitCode falls back to
+      InternalError(70).
+  - Process-entry guard: `main()` only runs when this file is the
+    direct invocation target (not imported by tests).
+- tests/unit/cli-node-version.test.ts — 11 specs (parseMajor 3 +
+  checkNodeVersion 6 + enforceNodeVersion 2).
+- tests/unit/cli-scan.test.ts — 6 specs (clean-config exit 0 +
+  dirty-config exit 1 at default floor + floor=critical lets
+  high-only findings pass + sarif --output + json stdout + default
+  console).
+- tests/unit/cli-inject.test.ts — 3 specs (default mock fallback +
+  stderr warning + severity-floor mapping).
+- tests/unit/cli-program.test.ts — 9 specs (three subcommands +
+  --version + descriptions + addHelpText Examples block via
+  outputHelp + top-level help mentions all subcommands +
+  scan/inject option presence + suggest required argument +
+  showSuggestionAfterError flag).
+
+**Implementation Notes propagation**:
+- DIRTY_CONFIG in cli-scan.test.ts uses `http://localhost:8080/mcp`
+  (SSRF-LOOPBACK = severity=high) rather than the cloud-metadata
+  IP because the floor=critical test needs a high-only finding to
+  verify that a high finding does NOT breach a critical floor. A
+  cloud-metadata URL emits severity=critical and would also breach
+  the test premise.
+- The `addHelpText` content is captured for tests via
+  `configureOutput({writeOut, writeErr})` + outputHelp() rather
+  than helpInformation(). Commander v13's helpInformation skips
+  the addHelpText hooks; the actual --help path runs outputHelp,
+  so capturing through that channel matches user-visible behavior.
+- The package.json read is synchronous in main() because it runs
+  once at startup and the file is local. Two candidate paths
+  searched (dist/../ + dist/cli/../) so the same binary works
+  whether invoked from `dist/cli/index.js` post-build or imported
+  by tests via tsx.
+- The version-check exit code is ConfigError(78) rather than
+  InvalidInput(2) because the failure mode is environmental
+  (operator's Node install), not user-provided data. EXIT_CODES.md
+  reserves 78 for that distinction.
+- `process.exitCode = ...` is set inside each action callback so
+  the commander parser can finish its book-keeping before main()
+  reads the value. Setting it directly on process.exit() inside
+  the action would short-circuit commander's cleanup.
+
+**Status**: L7 fully drained — T-30 + T-31 + T-32 complete.
+670 vitest specs PASS (641 prior + 29 new), tsc strict green. ADR
+count unchanged at 5. No new dependencies.
+
+**Next**: L8 CI integration.
+  - T-33: `.github/workflows/ci.yml` (typecheck + test + audit
+    across macOS/Linux/Windows matrix, AC-NF-3 + AC-NF-6 +
+    AC-α-2).
+  - T-34: `.github/workflows/mcp-guard-example.yml` (consumer-
+    facing template that scans PR diffs with single-deduped
+    comment + fail-on-severity gate, AC-004).
+  - T-35: existing `mcp-schema-drift.yml` (T-09) refinement
+    verification.
