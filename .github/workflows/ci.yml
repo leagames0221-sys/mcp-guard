@@ -38,7 +38,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 22 LTS — pnpm@11 (pinned via packageManager in
+          # package.json) requires Node ≥22.13. The runtime gate
+          # `MIN_NODE_MAJOR=20` in src/cli/node-version-check.ts
+          # keeps consumers on Node 20 LTS supported; CI verifies
+          # on the higher LTS to exercise the newer runtime path.
+          node-version: '22'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
