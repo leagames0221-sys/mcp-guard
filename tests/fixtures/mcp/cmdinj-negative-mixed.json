@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "fs-tool": {
+      "command": "node",
+      "args": ["./fs-server.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "LOG_LEVEL": "info"
+      }
+    },
+    "remote-saas": {
+      "url": "https://mcp.vendor-example.com/sse",
+      "transport": "sse"
+    }
+  }
+}

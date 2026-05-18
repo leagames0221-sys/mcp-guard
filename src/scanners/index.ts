@@ -10,10 +10,16 @@ import {
   type ScannerCategory,
 } from './types.js';
 import { ssrfScanner } from './ssrf.js';
+import { commandInjectionScanner } from './command-injection.js';
 
 export { SCANNER_CATEGORIES, makeFindingId } from './types.js';
 export type { Scanner, ScanContext, ScannerCategory } from './types.js';
 export { ssrfScanner, evaluateSsrfUrl } from './ssrf.js';
+export {
+  commandInjectionScanner,
+  evaluateCommandInjection,
+  type CmdInjInput,
+} from './command-injection.js';
 
 // Stub detector — kept private so the only export surface is the
 // registry factory. T-20..T-22 each lift one stub into its own file
@@ -34,7 +40,7 @@ function makeStubScanner(category: ScannerCategory): Scanner {
 export function createScannerRegistry(): Scanner[] {
   return [
     ssrfScanner,
-    makeStubScanner('command-injection'),
+    commandInjectionScanner,
     makeStubScanner('auth-gap'),
     makeStubScanner('supply-chain-risk'),
   ];

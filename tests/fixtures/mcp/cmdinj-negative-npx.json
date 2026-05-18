@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@example-org/mcp-github"],
+      "env": {
+        "GITHUB_TOKEN": "redacted-fixture-token"
+      }
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
+  }
+}

@@ -808,3 +808,102 @@ characters, `sh -c` / `bash -c` invocations, pipe chains, env-var
 splice patterns, and unsafe interpreter paths. Fixtures:
 `tests/fixtures/mcp/cmdinj-positive-*.json` (≥3) and
 `cmdinj-negative-*.json` (≥3).
+
+## 2026-05-18 — L4 T-20 command-injection detector
+
+**Goal**: Light up the command-injection registry slot. Decomposed
+prior art = OWASP A03 Injection + CWE-78 OS Command Injection +
+Shellshock CVE-2014-6271 corpus + curl-pipe-shell supply-chain
+attack pattern (well-documented across npm + PyPI ecosystem).
+
+**Changed**:
+
+- **T-20**: src/scanners/command-injection.ts —
+  `evaluateCommandInjection({command, args?, env?})` pure function
+  returning `RuleHit[]` (multi-hit allowed; each rule is
+  independently actionable), plus `commandInjectionScanner`
+  registry entry. 5 rules, all independent (not first-match):
+  - CMDINJ-CURL-PIPE-SHELL (critical): joined cmdline matches
+    `\b(curl|wget|fetch|iwr|invoke-webrequest)\b[^|]*\|\s*(sh|bash|
+    zsh|ksh|dash|ash|pwsh|powershell|cmd)\b` — direct RCE supply-
+    chain primitive.
+  - CMDINJ-SHELL-INTERPRETER (high): command basename matches the
+    SHELL_INTERPRETERS set (sh/bash/zsh/dash/ksh/fish/ash/cmd/
+    powershell/pwsh) AND any arg is in SHELL_EVAL_FLAGS (-c, /c,
+    /C, -Command, -command, -EncodedCommand). Strips `.exe` suffix
+    and normalizes path separators for cross-platform basename.
+  - CMDINJ-INTERPRETER-EVAL (high): command basename matches a
+    code-interpreter key in CODE_EVAL_FLAGS map (python/python2/
+    python3 → -c; node/nodejs → -e/--eval/-p/--print; deno → eval;
+    perl → -e/-E; ruby/lua/osascript → -e; php → -r) AND any arg
+    is the corresponding eval flag.
+  - CMDINJ-SHELL-METACHAR (medium): any arg matches `[`;|&<>]|
+    \$\(|\$\{` — shell metacharacters that enable injection when
+    the MCP runtime spawns through a shell (common on Windows +
+    shell:true).
+  - CMDINJ-ENV-INJECTION (medium): any env value matches `\$\(|`|
+    \(\)\s*\{` — Shellshock-style function definition or command
+    substitution.
+- src/scanners/index.ts — `createScannerRegistry()` now wires
+  `commandInjectionScanner` into slot 1 (canonical command-
+  injection position); slots 2-3 remain stubs pending T-21/T-22.
+- tests/fixtures/mcp/: 3 positive (cmdinj-positive-curl-pipe-shell
+  with sh -c + curl-pipe-sh / cmdinj-positive-shell-c with bash -c
+  / cmdinj-positive-node-eval with node -e) + 3 negative (cmdinj-
+  negative-plain-node clean node ./server.js / cmdinj-negative-npx
+  with `npx -y` + `uvx` both benign + safe env / cmdinj-negative-
+  mixed with clean stdio + clean http combination).
+- tests/unit/scanners-command-injection.test.ts — 50 specs covering
+  each rule's flag/skip semantics, basename normalization (path
+  separator + .exe stripping), multi-hit composition (curl-pipe-sh
+  through sh -c emits 3 rules concurrently), Finding shape
+  (locator format: `mcpServers.<srv>.command` /
+  `mcpServers.<srv>.args[N]` / `mcpServers.<srv>.env.<key>`),
+  Finding-id determinism, http-server-skip, multi-server flatten,
+  fixture-driven parser-round-trip assertions per fixture, registry
+  slot-1 wiring + slots-2-3-still-stubs invariants.
+
+**Implementation Notes propagation**:
+- Multi-hit per server is intentional (not first-match-wins).
+  `sh -c "curl … | sh"` legitimately fires 3 rules because each
+  remediation surface is distinct: drop the shell wrapper (SHELL-
+  INTERPRETER), verify+pin the install URL (CURL-PIPE-SHELL),
+  refactor args to avoid shell metacharacters (SHELL-METACHAR).
+  The CLI severity gate (T-26 / T-30+) will threshold by max
+  severity, so noise is bounded at consumption time, not detection
+  time.
+- `basename()` lowercases AND strips `.exe` so the Windows variant
+  `C:\Windows\System32\cmd.exe` collapses to `cmd`. Path separators
+  are normalized via single backslash-to-slash replace before
+  split. Verified by an explicit Windows-style test case.
+- Interpreters are mapped via a `Map<string, ReadonlySet<string>>`
+  so the eval-flag set is per-interpreter (node has multiple eval
+  flags, perl distinguishes -e/-E, deno uses subcommand `eval`
+  rather than a flag). Keeps the rule precise enough to skip
+  `node ./server.js` cleanly.
+- METACHAR_RE deliberately does NOT include `=`, `*`, `?`, `(`,
+  `)`, `[`, `]`, `,` — these appear in legitimate args (env=value
+  pairs, file globs in some non-shell args, JSON snippets). The
+  flagged set is the minimum necessary for shell injection.
+- ENV-INJECTION captures the CVE-2014-6271 (Shellshock) signature
+  `() {` as well as the generic `$(…)` / backtick patterns. False-
+  positive risk on legitimate env values is low because production
+  configs typically use literal strings or `${VAR}` (which is NOT
+  flagged — only `$(…)` command-substitution is).
+- `commandInjectionScanner.scan` uses conditional property spread
+  (`...(server.args !== undefined ? { args: server.args } : {})`)
+  to honour `exactOptionalPropertyTypes: true` from T-02 tsconfig
+  — passing `args: undefined` would fail tsc strict.
+
+**Status**: L4 T-18 + T-19 + T-20 complete. 351 vitest specs PASS
+(301 prior + 50 new), tsc strict green. ADR count unchanged at 5.
+
+**Next**: T-21 auth-gap detector (`src/scanners/auth-gap.ts`) —
+flag http server `headers` for missing/weak authorization (no
+authorization header on remote endpoint, bearer prefix with empty
+value, basic-auth literal credentials, plaintext API token in URL
+query string), and stdio `env` for credential-bearing keys without
+`redacted-*` placeholder framing (TOKEN/SECRET/KEY/PASSWORD value
+appears to be a real credential). Fixtures:
+`tests/fixtures/mcp/auth-gap-positive-*.json` (≥3) and
+`auth-gap-negative-*.json` (≥3).

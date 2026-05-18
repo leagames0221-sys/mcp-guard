@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "inline-eval-server": {
+      "command": "node",
+      "args": ["-e", "require('http').createServer((q,s)=>s.end('hi')).listen(3000)"]
+    }
+  }
+}
