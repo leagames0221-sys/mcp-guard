@@ -1574,3 +1574,106 @@ green. ADR count unchanged at 5. No new dependencies.
     .json>` subcommand (AC-003-2 + AC-003-4). Provider-available
     path enriches the template output; provider-unavailable
     falls back to template. Paid-API 6-layer defense unchanged.
+
+## 2026-05-19 — L6 T-28 template-based remediation engine
+
+**Goal**: Stand up the F-003 remediation engine's static path —
+per-finding suggested patch + references with `source: 'template'`
+label — so T-29 can layer LLM enrichment on top without
+restructuring.
+
+**Changed**:
+
+- **T-28**: src/remediation/{types,templates,index}.ts.
+  - `Remediation = {findingId, ruleId, category, severity,
+    suggested_patch, references[], source: 'template' | 'llm'}` per
+    AC-003-1 + AC-003-2 + AC-003-3.
+  - `REMEDIATION_TEMPLATES`: frozen map of 18 entries covering every
+    ruleId currently emitted by L4 scanners (audited via
+    `grep ruleId:` against src/scanners/*.ts before authoring).
+    Layout: SSRF 4 (cloud-metadata / loopback / private-ip /
+    non-http-scheme), CMDINJ 5 (shell-interpreter / shell-metachar /
+    interpreter-eval / env-injection / curl-pipe-shell), AUTH-GAP 5
+    (url-credential / no-authorization / weak-bearer / basic-auth-
+    plaintext / plaintext-credential), SUPPLY-CHAIN 4 (unscoped-pkg
+    / unpinned-version / ephemeral-host / raw-content).
+  - Each template body is plain text (no markdown / code fences) so
+    it survives both the JSON emitter (no escape pass) and the
+    console emitter without re-escaping. ≥ 1 reference URL per
+    template, drawing from OWASP Top 10 2021 (A03/A07/A10), OWASP
+    LLM Top 10, CWE (77 / 94 / 287 / 319 / 798 / 918 / 1357 / 1395),
+    AWS IMDS docs, and the MCP spec.
+  - `templateRemediationFor(finding)` builds the Remediation by
+    looking up `REMEDIATION_TEMPLATES[finding.ruleId]`; severity is
+    preserved verbatim from the finding (so the scanner's
+    severity decision flows through unchanged), source is hard-
+    coded `'template'`.
+  - Unknown-ruleId fallback: if a ruleId is not in the map (genuine
+    drift case), the engine infers category from the prefix
+    (SSRF- / CMDINJ- / AUTH-GAP- / SUPPLY-CHAIN-) and returns a
+    generic category-level guidance string with `references: []`.
+    Empty refs are the drift signal — code doesn't crash but the
+    output marks itself as un-curated.
+  - `remediateFindings(findings[])` is the bulk path used by the
+    CLI; preserves input order so the report and remediation lists
+    line up by index for downstream consumers.
+- tests/unit/remediation.test.ts — 20 specs.
+  - **Coverage invariant (7)**: every of 18 known ruleIds has a
+    template (the load-bearing assertion — a new scanner rule will
+    fail this test until a template lands in the same commit);
+    every template's category is in SCANNER_CATEGORIES; every
+    suggested_patch is ≥ 20 chars (non-trivial); every references[]
+    has ≥ 1 entry starting with http(s)://; every SCANNER_CATEGORIES
+    member is represented; frozen-table invariant; templateFor
+    returns undefined for unknown ruleId.
+  - **Output shape (7)**: AC-003-1 fields present + non-empty,
+    source label = 'template' (AC-003-3), severity preserved across
+    low/medium/high/critical, prefix-based category routing
+    verified for all 18 ruleIds (split into 4 sub-specs per
+    category).
+  - **Fallback path (4)**: SSRF-/CMDINJ-/AUTH-GAP-/SUPPLY-CHAIN-
+    prefixed unknown ruleIds get category-correct guidance + empty
+    references + source='template' (so callers can still aggregate
+    without special-casing).
+  - **Bulk (2)**: remediateFindings preserves input order across a
+    3-finding mixed-category list; [] in → [] out.
+
+**Implementation Notes propagation**:
+- Coverage invariant pattern mirrors the T-24 corpus integrity
+  test's "every category present" assertion — same shape, different
+  axis. When a future T-19+ task adds a new ruleId, the failing
+  remediation test points directly at the missing template entry,
+  which is the cheapest possible drift signal.
+- Reference URL set deliberately includes BOTH OWASP and CWE for
+  each category so the references list is useful to consumers who
+  prefer one taxonomy over the other. The REF constants object
+  consolidates URLs in one place so a future spec migration
+  (e.g. OWASP Top 10 2026) only touches the constants table.
+- The category-fallback strings live in src/remediation/index.ts
+  (not templates.ts) because they're behavior, not data — they
+  describe what the engine SAYS when it has nothing curated,
+  whereas templates.ts is the curated catalog. This split lets the
+  catalog stay pure-data + freezeable.
+- Templates use the imperative-mood action voice (e.g. "Strip the
+  userinfo segment...", "Pin to a specific semver...") rather than
+  passive declarative ("Userinfo should be stripped...") because
+  the consumer is a developer or CI gate that needs an action item,
+  not a description.
+- Bulk path is `.map(templateRemediationFor)` rather than a hand-
+  rolled loop because the per-element function is pure and the
+  test asserts ordering explicitly; future parallelization (if any)
+  would replace the map but the contract stays the same.
+
+**Status**: L6 T-28 complete. 611 vitest specs PASS (591 prior + 20
+new), tsc strict green. ADR count unchanged at 5. No new
+dependencies.
+
+**Next**: T-29 LLM-enriched remediation + `mcp-guard suggest
+<report.json>` subcommand. AC-003-2 path: when an LlmProvider is
+available + healthy, enrich each template's `suggested_patch` with
+provider-generated specifics (e.g. concrete locator-aware fix
+text); source label flips to `'llm'`. Provider-unavailable falls
+back to template (already AC-003-3 conformant). `suggest`
+subcommand reads a prior `scan` report.json from disk, runs
+remediation, emits to stdout. Paid-API 6-layer defense unchanged:
+no auto-swap to paid provider, mock fallback default in CI.
