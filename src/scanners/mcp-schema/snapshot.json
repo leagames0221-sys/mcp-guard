@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/leagames0221-sys/mcp-guard/schemas/mcp-config.json",
+  "title": "MCP client configuration (.mcp.json)",
+  "description": "Derived minimal JSON Schema for the .mcp.json client configuration shape mcp-guard validates. Sourced from the canonical MCP specification at the commit recorded in src/scanners/mcp-schema/upstream-commit.txt; see ADR-0005 for the pin + drift protocol.",
+  "type": "object",
+  "required": ["mcpServers"],
+  "additionalProperties": false,
+  "properties": {
+    "mcpServers": {
+      "type": "object",
+      "description": "Map of server identifier to server configuration.",
+      "additionalProperties": {
+        "$ref": "#/$defs/serverConfig"
+      }
+    }
+  },
+  "$defs": {
+    "serverConfig": {
+      "oneOf": [
+        { "$ref": "#/$defs/stdioServer" },
+        { "$ref": "#/$defs/httpServer" }
+      ]
+    },
+    "stdioServer": {
+      "type": "object",
+      "required": ["command"],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Executable to invoke for stdio transport."
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Environment variables to inject into the server process."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory override for the server process."
+        }
+      }
+    },
+    "httpServer": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "HTTP or HTTPS endpoint for SSE / streamable-HTTP transport."
+        },
+        "transport": {
+          "type": "string",
+          "enum": ["sse", "http", "streamable-http"]
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Static headers attached to every request to the endpoint."
+        }
+      }
+    }
+  }
+}
