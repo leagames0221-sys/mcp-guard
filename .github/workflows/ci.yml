@@ -1,0 +1,70 @@
+name: ci
+
+# T-33 pipeline (AC-NF-3 + AC-NF-6 + AC-α-2). Three checks across a
+# macOS / Linux / Windows matrix: typecheck → test+coverage → audit.
+# Each runner ships within the 5-minute wall-clock budget (AC-NF-3).
+#
+# Coverage threshold gating happens in vitest.config.ts (T-02) at
+# construction time, so this workflow does not duplicate the threshold;
+# the test step fails when coverage drops below 80%.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck + test + audit (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test + coverage
+        run: pnpm run test:coverage
+
+      - name: Audit (high severity threshold)
+        # pnpm audit exits non-zero on any vuln at-or-above --audit-level.
+        # Documented residuals tracked in CHANGELOG / per-release notes.
+        run: pnpm run audit
+
+      - name: Upload coverage report
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 14

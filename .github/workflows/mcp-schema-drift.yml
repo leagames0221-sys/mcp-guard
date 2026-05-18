@@ -1,10 +1,18 @@
 name: mcp-schema-drift
 
 # Detects drift between the locally pinned MCP specification commit and
-# upstream HEAD per ADR-0005. Runs on push to main and weekly so a stale
-# pin surfaces within a reasonable window even without a code change.
+# upstream HEAD per ADR-0005 + D-008. Runs on pull_request (so a stale
+# pin blocks merge per D-008), on push to main (so the badge stays
+# honest), and weekly so a stale pin surfaces within a reasonable
+# window even without a code change.
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/scanners/mcp-schema/**'
+      - 'scripts/update-mcp-schema.ts'
+      - '.github/workflows/mcp-schema-drift.yml'
   push:
     branches: [main]
     paths:

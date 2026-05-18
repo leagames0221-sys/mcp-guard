@@ -1,0 +1,133 @@
+name: mcp-guard-example
+
+# T-34 consumer-facing template (AC-004-1/2/3/4). Drop this file into
+# `.github/workflows/` of any repository that ships an `.mcp.json`-
+# style MCP server config; the workflow scans on every PR, posts a
+# single deduplicated comment, and fails the check when a finding
+# breaches the configured severity floor.
+#
+# Replace `MCP_CONFIG_PATH` with the actual path to the MCP config
+# in the consumer repo. The workflow runs entirely on the GitHub
+# Actions free tier and is sized to complete a 10-server config scan
+# in under 5 minutes per runner (AC-004-4).
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write   # required to upsert the PR comment (AC-004-2)
+
+env:
+  MCP_CONFIG_PATH: .mcp.json   # ← change me to your config path
+  FAIL_ON_SEVERITY: high       # AC-004-3: high or above fails the check
+
+concurrency:
+  group: mcp-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: mcp-guard scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install mcp-guard
+        # Install from GitHub Releases or registry; pin to a tagged
+        # version in production rather than `latest`.
+        run: npm install --global mcp-guard@latest
+
+      - name: Run scan
+        id: scan
+        # Run mcp-guard with the JSON emitter so the next step can
+        # parse + dedupe findings without re-running detection.
+        # `--fail-on-severity` exit-codes the run; we capture the
+        # exit code rather than failing the step immediately so the
+        # PR comment lands even when findings are present (AC-004-3).
+        run: |
+          set +e
+          mcp-guard scan "$MCP_CONFIG_PATH" \
+            --format json \
+            --output mcp-guard-report.json \
+            --fail-on-severity "$FAIL_ON_SEVERITY"
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Render PR comment
+        id: comment
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          with open('mcp-guard-report.json', 'r', encoding='utf-8') as f:
+              report = json.load(f)
+          findings = report.get('results', [])
+          # Dedupe by (ruleId, path) so re-runs don't compound the comment.
+          seen = set()
+          unique = []
+          for r in findings:
+              key = (r.get('ruleId'), r.get('path'))
+              if key in seen:
+                  continue
+              seen.add(key)
+              unique.append(r)
+          lines = []
+          lines.append('### mcp-guard scan results')
+          lines.append('')
+          lines.append(f'- Config: `{report.get("target", "(unknown)")}`')
+          lines.append(f'- Total findings: **{len(unique)}** (deduped)')
+          lines.append(f'- Threshold: `{os.environ.get("FAIL_ON_SEVERITY")}`')
+          lines.append('')
+          if unique:
+              lines.append('| Severity | Rule | Message |')
+              lines.append('|---|---|---|')
+              for r in unique[:50]:
+                  sev = r.get('severity', '?')
+                  rid = r.get('ruleId', '?')
+                  msg = (r.get('message', '') or '').replace('|', '\\|')[:160]
+                  lines.append(f'| {sev} | `{rid}` | {msg} |')
+              if len(unique) > 50:
+                  lines.append('')
+                  lines.append(f'_…{len(unique) - 50} more findings truncated_')
+          else:
+              lines.append('No findings.')
+          with open('mcp-guard-comment.md', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(lines))
+          PY
+
+      - name: Upsert single PR comment (dedupe)
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: mcp-guard
+          path: mcp-guard-comment.md
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-guard-report
+          path: mcp-guard-report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Enforce severity gate (AC-004-3)
+        # Re-raise the exit code captured earlier so the check fails
+        # AFTER the PR comment + artifact are in place.
+        run: |
+          code="${{ steps.scan.outputs.exit_code }}"
+          if [ "$code" != "0" ]; then
+            echo "mcp-guard scan exit code: $code (>= $FAIL_ON_SEVERITY findings present)"
+            exit "$code"
+          fi
+        shell: bash

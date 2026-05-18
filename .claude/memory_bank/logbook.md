@@ -1917,3 +1917,112 @@ count unchanged at 5. No new dependencies.
     comment + fail-on-severity gate, AC-004).
   - T-35: existing `mcp-schema-drift.yml` (T-09) refinement
     verification.
+
+
+## 2026-05-19 - L8 T-33 + T-34 + T-35 CI integration (L8 fully drained)
+
+**Goal**: Land the three CI workflows the spec calls for (T-33 ci.yml,
+T-34 mcp-guard-example.yml, T-35 drift refinement) so AC-NF-3 +
+AC-NF-6 + AC-alpha-2 + AC-004-1..4 + D-008 are all literally enforced
+on PR + push to main.
+
+**Changed**:
+
+- **T-33** .github/workflows/ci.yml - new. Matrix strategy
+  [ubuntu-latest, macos-latest, windows-latest] (AC-NF-6 cross-OS
+  literal coverage). Per-runner pipeline: lockfile-frozen dep
+  install -> tsc --noEmit -> vitest run --coverage (threshold gate
+  lives in vitest.config.ts so this step fails on <80%) -> audit at
+  high severity threshold.
+  - timeout-minutes: 5 per runner (AC-NF-3 5-minute budget).
+  - concurrency group cancels in-flight runs on new pushes to the
+    same ref - avoids serial backlog on rapid pushes during active
+    dev.
+  - Coverage HTML report uploaded as an artifact from the
+    ubuntu-latest runner only (avoiding 3x bloat on identical
+    output across the matrix).
+  - Triggers: pull_request:main + push:main + workflow_dispatch.
+    AC-alpha-2 stream condition accumulates across the push:main
+    runs; T-39 reads the literal count via git log + Actions API.
+- **T-34** .github/workflows/mcp-guard-example.yml - new. Consumer-
+  facing template designed to be dropped into a downstream repo
+  with two env knobs (MCP_CONFIG_PATH + FAIL_ON_SEVERITY). Pipeline:
+    1. Acquire the tool from the public package registry.
+    2. Scan target config with --format json --output ... --fail-on-
+       severity $FAIL_ON_SEVERITY; capture exit code in
+       $GITHUB_OUTPUT.exit_code rather than failing the step
+       immediately (so the comment lands even when findings are
+       present, AC-004-3 ordering).
+    3. Render PR comment via inline python heredoc - dedupes
+       findings by (ruleId, path) tuple (AC-004-2 dedupe invariant),
+       caps display at 50 with truncation footer, formats as a
+       markdown severity/rule/message table.
+    4. Upsert single sticky comment via marocchino/sticky-pull-
+       request-comment@v2 with header 'mcp-guard' (re-runs replace
+       the prior comment, AC-004-2).
+    5. Upload report artifact (always, 30-day retention).
+    6. Re-raise captured exit code AFTER the comment + artifact are
+       in place (AC-004-3 fail gate post-disclosure).
+  - 5-min timeout (AC-004-4 10-config scan budget).
+  - Permissions: contents:read + pull-requests:write (minimum
+    required to upsert the comment).
+- **T-35** .github/workflows/mcp-schema-drift.yml - refinement.
+  Added pull_request:branches:[main] trigger (paths-filtered to the
+  same set as push:main + schedule:weekly + workflow_dispatch
+  already had). This is the literal D-008 enforcement: a PR that
+  touches the vendored MCP snapshot or the update script now blocks
+  on drift-check pass before merge. Existing push/schedule/dispatch
+  triggers retained so the badge stays honest + stale pins surface
+  out-of-band.
+
+**Implementation Notes propagation**:
+- The example workflow uses the public-package-registry acquire
+  path (not the workspace-local manager) for the consumer side
+  because the downstream repo's manager is unknown. Global tool
+  acquisition works under any consumer's Node setup. In production,
+  consumers should pin to a tagged version rather than @latest -
+  comment in the workflow notes this.
+- Dedupe key (ruleId, path) was chosen over (id) because Finding.id
+  is content-addressed and would diverge across the slightest
+  message change. (ruleId, path) is the human-stable identifier for
+  same-finding-location; comment churn is suppressed when only the
+  finding message text changes between runs.
+- The 50-finding display cap exists because PR comments have a
+  hard 65,536-char limit and a 50-row severity-table is well under
+  that. Truncation footer signals data loss explicitly rather than
+  silently dropping.
+- Coverage artifact upload restricted to ubuntu-latest runner
+  rather than all three OS matrix entries. Coverage output is OS-
+  independent (vitest reads the same source files); uploading from
+  all three would burn artifact storage with identical reports.
+- The drift workflow's pull_request trigger inherits the same
+  paths filter as push, so PRs that do not touch
+  src/scanners/mcp-schema/ or scripts/update-mcp-schema.ts are
+  skipped entirely - D-008's blocks-merge-on-schema-change literal
+  scope is preserved without firing on unrelated PRs.
+- The push:main trigger on drift remains so the main-branch badge
+  stays honest. A weekly cron + workflow_dispatch are retained from
+  T-09's original design so a stale pin surfaces out-of-band even
+  in the absence of code activity.
+- AC-alpha-2 (5 consecutive green CI commits, stream condition) is
+  enforced by T-33 ci.yml running on push:main. Each green commit
+  on main adds to the stream; T-39 reads git log + Actions API at
+  the Phase alpha exit timepoint to verify literal consecutive count.
+
+**Status**: L8 fully drained - T-33 + T-34 + T-35 complete. 670
+vitest specs PASS (unchanged from L7 - workflow changes do not add
+test surface, but PyYAML round-trip on all 3 workflow files
+verified structural validity). tsc strict green. ADR count
+unchanged at 5. No new dependencies.
+
+**Next**: L9 Phase alpha gate.
+  - T-36 tests/concurrent/concurrent.test.ts: 4 concurrent scan
+    invocations against same output path -> all succeed, final file
+    is one of the 4, no truncation, no interleave (AC-NF-7).
+  - T-37 docs suite: docs/owasp-llm-top10-mapping.md +
+    docs/PROVIDERS.md + README refresh (AC-alpha-3).
+  - T-38 benchmark + Golf Scanner audit (ADR-0004 lands here,
+    AC-alpha-5 + AC-alpha-3).
+  - T-39 independent verify via tier-reviewer subagent against
+    tool_tier_rubric.md v2.0 - 7/7 binary criteria PASS literal
+    (AC-alpha-7) + user gate.
