@@ -609,3 +609,71 @@ unchanged at 5.
 terminal output, ANSI sanitize via T-07 logger, colour by severity,
 respect NO_COLOR env). Last of L3; with T-17 done the L4+ scanner /
 probe / harness wiring can begin.
+
+## 2026-05-18 — L3 T-17 console emitter (AC-NF-4) — L3 layer drained
+
+**Goal**: Land the last L3 emitter — human-readable terminal output that
+sanitizes every hostile-content surface (path, ruleId, message, finding
+path) before it touches the stream, honours the no-color.org convention
+via NO_COLOR, and auto-detects TTY for colour decisions. Progress
+reporting [N/M] belongs to the T-07 logger and was already landed
+(AC-002-3).
+
+**Changed**:
+
+- **src/io/emitters/console.ts**: `renderReport(report, opts?)` returns
+  a string; `emitConsoleReport(report, opts?)` writes that string to
+  `opts.stream ?? process.stdout`. Severity tag colour map = critical
+  bold red / high red / medium yellow / low cyan. Clean-report ok
+  line is green when colour is on. Header line "mcp-guard
+  <version> — target: <target>" + "generated: <iso>" always renders.
+  Findings present → summary line with total + per-severity counts +
+  per-finding block (severity tag + ruleId + id + sanitized message
+  + optional "at <path>[:line[:col]]" location).
+- **Colour decision**: explicit opts.color wins; else NO_COLOR env
+  (any non-empty value, per no-color.org) disables; else stream
+  isTTY=true enables.
+- **src/io/emitters/index.ts**: re-exports renderReport +
+  emitConsoleReport + ConsoleEmitOptions.
+- **tests/unit/io-emitters-console.test.ts** — 21 vitest specs:
+  3 clean-report cases (header content / no-ANSI in non-colour
+  mode / green wrap when colour on), 5 findings-present cases
+  (counts summary; singular vs plural "finding"; path+line+col
+  location; path-only location; no location when path absent),
+  5 AC-NF-4 sanitization cases (ANSI in message / control chars
+  in message / ANSI in target path / ANSI in ruleId / ANSI in
+  finding.path — all stripped), 6 colour-decision cases (non-TTY
+  default off / TTY on / TTY+NO_COLOR=1 off / TTY+NO_COLOR="" still
+  on / color=true overrides NO_COLOR+non-TTY / color=false overrides
+  TTY), 2 emitConsoleReport stream-write integration tests
+  (findings-present output content / clean-report no-ANSI in non-
+  TTY stream).
+
+**Implementation Notes propagation**:
+- Progress reporting [N/M] <probe-name> is already in T-07's
+  logger.progress() per AC-002-3; this emitter intentionally does
+  not duplicate it. The CLI entry point (T-30+) will call
+  logger.progress() during scan iteration and emitConsoleReport
+  once at the end.
+- captureStream test helper uses a duck-typed object with
+  `write(): boolean` + `end()` + `isTTY`. Avoids constructing a
+  real Writable subclass (which would pull node:stream into the
+  test file unnecessarily).
+- Colour escape sequences are added AFTER sanitize() so the
+  emitter's own intentional escapes are not stripped by its own
+  sanitizer.
+- NO_COLOR=empty-string is treated as not-set per the no-color.org
+  spec section "Implementations should check for the existence of
+  NO_COLOR with any non-empty value".
+
+**Status**: L0 + L1 + L2 + L3 (T-14 ~ T-17) all drained. 247 vitest
+specs PASS (226 prior + 21 new), tsc strict green. ADR count
+unchanged at 5.
+
+**Next**: L4 Scanner layer kickoff — T-18 (`src/scanners/{index,
+types}.ts` registry pattern, 4 scanner instances each implementing
+`{ category, scan(config): Finding[] }`), then T-19 SSRF detector,
+T-20 command-injection detector, T-21 auth-gap detector, T-22
+supply-chain-risk detector + e2e integration. L4 is the F-001
+scanner core; L5+ harness wires probes + LLM providers to detector
+output.

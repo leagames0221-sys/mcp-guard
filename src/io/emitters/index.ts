@@ -25,6 +25,12 @@ export {
   SARIF_SCHEMA,
   TOOL_INFORMATION_URI,
 } from './sarif.js';
+
+export {
+  renderReport,
+  emitConsoleReport,
+} from './console.js';
+export type { ConsoleEmitOptions } from './console.js';
 export type {
   SarifLog,
   SarifRun,

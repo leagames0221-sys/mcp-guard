@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 T-14/T-15/T-16 (parser + JSON emitter atomic + SARIF v2.1.0) completed (T-01 through T-16, 2026-05-18).**
-**Next: L3 T-17 console emitter (last of L3); then L4+ scanners / probes / harness.**
+**Phase 1 — L0 Foundation + L1 Cross-cutting + L2 LlmProvider layer + L3 I/O layer (T-14 ~ T-17 all drained) completed (T-01 through T-17, 2026-05-18).**
+**Next: L4 Scanner layer (T-18 registry → T-19 SSRF → T-20 command-injection → T-21 auth-gap → T-22 supply-chain-risk → integration).**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L3 T-17 (console emitter, last of L3) next; T-16 SARIF v2.1.0 hand-rolled landed
+- L4 Scanner layer pending kickoff (T-18 registry → T-19/T-20/T-21/T-22 four detectors); L3 I/O fully drained
 
 ## Open questions
 
