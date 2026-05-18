@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — L0 + L1 + L2 + L3 + L4 ALL COMPLETE (T-01 through T-22 + F-001 e2e, 2026-05-18). All 4 scanner detectors lit up, no stubs remaining.**
-**Next: L5 Probe/Detector/Harness layer (T-23 corpus loader → T-24 OWASP LLM01–10 probe corpus → T-25 detector layer → T-26 sequential harness → T-27 F-002 e2e).**
+**Phase 1 — L0 + L1 + L2 + L3 + L4 + L5 T-23 COMPLETE (T-01 through T-23, 2026-05-18). Probe corpus loader landed; OWASP probe corpus authoring next.**
+**Next: T-24 OWASP LLM01–10 probe corpus (≥30 files spanning all 10 categories) → T-25 detector layer → T-26 sequential harness → T-27 F-002 e2e.**
 
 ## Recent accepted stages
 
@@ -17,7 +17,7 @@
 
 ## Currently in progress
 
-- L4 fully drained (T-18 registry + T-19 SSRF + T-20 command-injection + T-21 auth-gap + T-22 supply-chain-risk all lit up); F-001 e2e landed (50-server synthetic scan, 26ms actual vs 60s budget = 0.04% consumed). 493 vitest specs PASS. Next layer = L5 harness for F-002 (probe corpus + detector verdicts + sequential runner)
+- L5 T-23 landed: `src/probes/{types,loader}.ts` + 6 fixtures (2 valid + 4 invalid) + 26-spec unit test. YAML 1-probe-per-file (D-002), zod strict schema, required-metadata gate (`corpus_version` + `owasp_category` per D-009 + AC literal), DataFormatError on YAML parse fail, InvalidInputError on schema fail, IoError on ENOENT, duplicate-id guard. Lexicographic directory walk for cross-OS determinism. 519 vitest specs PASS (493 prior + 26 new). Next: T-24 OWASP LLM01–10 probe corpus (≥30 files, all 10 categories, sanitized + license-noted educational scope).
 
 ## Open questions
 

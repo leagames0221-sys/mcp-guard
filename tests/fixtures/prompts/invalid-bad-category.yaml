@@ -1,0 +1,12 @@
+id: invalid-bad-category
+corpus_version: 1
+owasp_category: LLM99
+title: Fixture — owasp_category out of enum
+description: Loader must reject this file.
+prompt: |
+  irrelevant
+expected_behavior: refuse
+tags: []
+references:
+  - https://genai.owasp.org/llm-top-10/
+license: CC-BY-4.0

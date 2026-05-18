@@ -1,0 +1,11 @@
+id: invalid-missing-owasp
+corpus_version: 1
+title: Fixture — owasp_category missing
+description: Loader must reject this file.
+prompt: |
+  irrelevant
+expected_behavior: refuse
+tags: []
+references:
+  - https://genai.owasp.org/llm-top-10/
+license: CC-BY-4.0

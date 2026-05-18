@@ -1120,3 +1120,73 @@ OWASP LLM01-10 probe corpus (≥ 30 probes spanning all 10 categories)
 → T-25 src/detectors/ verdict layer (garak 3-layer pattern per
 ADR-0003 §4) → T-26 src/harness/ sequential executor (mock fallback
 + stderr progress + severity gate) → T-27 F-002 e2e.
+
+## 2026-05-18 — L5 T-23 probe corpus loader
+
+**Goal**: Land the L5 kickoff task — probe types + YAML loader + fixtures
++ unit tests — without touching detector / harness yet (T-24+).
+
+**Changed**:
+
+- **T-23**: src/probes/types.ts + src/probes/loader.ts.
+  - `Probe` shape: id (lowercase + dashes only) + corpus_version (int>0)
+    + owasp_category (LLM01..LLM10 enum) + title + description + prompt
+    + expected_behavior ('refuse' | 'safe-completion' | 'no-leak') + tags
+    + references (≥ 1, URL-validated) + license. zod `.strict()` rejects
+    unknown extra fields so corpus drift is caught at load time.
+  - Required-metadata gate (AC literal D-009): `corpus_version` +
+    `owasp_category` checked PRE-zod so the error message names the
+    missing key directly (zod's generic phrasing would muddle it).
+    Test asserts both keys are named in the single-throw case.
+  - Error mapping: YAML parse fail → DataFormatError (65), schema
+    fail → InvalidInputError (2), ENOENT → IoError (74). Mirrors T-14
+    parser's mapping so the CLI exit-code table stays uniform.
+  - `loadProbeDirectory`: recursive `readdirSync({ withFileTypes,
+    encoding: 'utf-8' })` walk, lexicographic sort at each level so
+    file order is reproducible across Linux/macOS/Windows. Non-yaml
+    files silently skipped. Duplicate-id guard rejects two files
+    claiming the same probe id (ids feed Finding ids in T-27).
+- tests/fixtures/prompts/: 2 valid (`valid-minimal.yaml` LLM01 refuse +
+  `valid-llm06.yaml` LLM06 no-leak) + 4 invalid (missing-corpus-version,
+  missing-owasp, bad-category enum, malformed YAML).
+- tests/unit/probes-loader.test.ts — 26 specs covering: happy-path
+  parse + frozen-object invariant + path preservation, every
+  OWASP_CATEGORIES enum value round-trips, every EXPECTED_BEHAVIORS
+  enum value round-trips, tags default to [], required-metadata gate
+  (both keys named when both missing), schema rejections (bad enum,
+  malformed YAML, non-mapping root array/scalar, negative
+  corpus_version, empty references, malformed URL, uppercase id,
+  unknown extra field via strict()), error.details carries sourcePath,
+  ENOENT → IoError, directory walk (2-file load, lexicographic order,
+  recursion, non-yaml skip, duplicate-id reject).
+
+**Implementation Notes propagation**:
+- `Dirent[]` typed explicitly with `encoding: 'utf-8'` cast — Node 20
+  types overload makes the default-options inference resolve to
+  `Dirent<NonSharedBuffer>` which loses `.name: string`. The explicit
+  encoding pins the string form. tsx + vitest both happy.
+- zod `.strict()` chosen over `.passthrough()` so unknown fields fail
+  fast at load. Corpus authoring discipline beats silent acceptance
+  when the schema is the spec.
+- Probe object is `Object.freeze`d before return so downstream
+  detector / harness code cannot mutate a corpus entry mid-run. Cheap
+  defense for verdict-table reproducibility.
+- Reference URL validation uses zod's `.url()` so probe files can be
+  cited against OWASP (or any other public source) without ad-hoc
+  regex parsing. Fixtures use https://genai.owasp.org/llm-top-10/ as
+  the canonical reference per ADR-0001 prior-art seeds.
+- Duplicate-id check happens AFTER all files load (one full pass),
+  not interleaved with the walk, so error reporting can cite both
+  offending paths simultaneously.
+
+**Status**: L5 T-23 complete. 519 vitest specs PASS (493 prior + 26
+new), tsc strict green. ADR count unchanged at 5. No new
+dependencies (yaml + zod batched in T-01).
+
+**Next**: T-24 — author OWASP LLM01–10 probe corpus under
+`src/probes/owasp/llm0{1..10}/*.yaml`, ≥ 30 files total spanning all
+10 categories, sanitized + license-noted (educational scope per
+spec.md § security). Each probe file's `references[]` must cite the
+OWASP LLM Top 10 doc. Loader test will get a corpus-count + category-
+coverage assertion against the real `src/probes/owasp/` tree once the
+corpus lands.
