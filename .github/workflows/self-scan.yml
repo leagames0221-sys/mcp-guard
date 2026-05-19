@@ -1,0 +1,85 @@
+name: self-scan
+
+# AC-α-6 final completion: mcp-guard scans a known-clean bundled
+# fixture, emits SARIF, and uploads to GitHub Code Scanning so the
+# repo's Security tab literally displays the integration. This proves
+# end-to-end (CLI → SARIF → GitHub UI ingestion) on the same artifact
+# downstream consumers would produce.
+#
+# Why scan a CLEAN fixture (not a dirty one): the dirty fixtures
+# under tests/fixtures/benchmark/ are deliberately-flagged test data
+# (e.g. cloud-metadata SSRF). Uploading those findings would pollute
+# the Security tab with fixture-noise and mislead visitors. Scanning
+# the clean baseline produces an empty results[] in SARIF, which
+# demonstrates the integration works while keeping the alert ledger
+# honest at zero.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/fixtures/benchmark/**'
+      - 'scripts/**'
+      - '.github/workflows/self-scan.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/fixtures/benchmark/**'
+      - 'scripts/**'
+      - '.github/workflows/self-scan.yml'
+  workflow_dispatch: {}
+  schedule:
+    # Weekly Monday 10:00 UTC so the Security tab stays fresh.
+    - cron: '0 10 * * 1'
+
+permissions:
+  contents: read
+  security-events: write   # required by codeql-action/upload-sarif
+
+concurrency:
+  group: self-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: mcp-guard self-scan + SARIF upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Run mcp-guard against bundled clean fixture
+        # Scan the labelled-clean baseline so the Security tab shows
+        # 0 alerts. tests/fixtures/benchmark/01-clean-production.json
+        # is verified-clean by scripts/benchmark.ts (TP=0 / FP=0 / FN=0
+        # for that fixture per docs/BENCHMARK.md).
+        run: |
+          node dist/cli/index.js scan tests/fixtures/benchmark/01-clean-production.json \
+            --format sarif \
+            --output mcp-guard-self-scan.sarif \
+            --fail-on-severity critical
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: mcp-guard-self-scan.sarif
+          category: mcp-guard-self-scan
