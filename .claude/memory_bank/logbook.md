@@ -2,6 +2,8 @@
 
 > Append-only chronological log of work sessions. Each entry: date, session goal, what changed, links.
 
+> ⚠ **SHA reference notice (2026-05-19 18:30+ JST)**: All commit SHAs cited in entries before `a646fd4` are **historical references only** — they refer to commits that existed in the pre-rewrite history. As part of the AC-α-8 PUBLIC-flip preparation, `git filter-branch` rewrote all 56 commits on main to remove `.claude/.security_telemetry.jsonl` from history. The new SHAs (post-rewrite) are different but the commit sequence, content, and semantics are identical except for the removed file. `git show <old-sha>` will fail; the events these old SHAs document still happened and the resulting tree state is preserved on `main` (HEAD = `a646fd4`).
+
 ## 2026-05-18 — Phase 0 scaffold
 
 **Goal**: Install initial PJ structure per internal new-PJ install protocol.

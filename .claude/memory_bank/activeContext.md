@@ -4,8 +4,8 @@
 
 ## Current phase
 
-**Phase 1 — ALL LAYERS COMPLETE (T-01 through T-39, 2026-05-19). Phase α gate verified by independent tier-reviewer subagent: 7/7 binary criteria PASS on main HEAD f7c2004 after Writer/Reviewer 2-round loop (REFUTE → fix → CONFIRM). ★★★ verdict is reviewer-CONFIRM, awaiting user-gate promotion per rubric §user-gate.**
-**Next: user gate decision on ★★ → ★★★ promotion. Phase β scope (sbom-pilot / sibling repo) deferred until promotion lands.**
+**Phase 1 — ★★★ STRONG HIRE VERIFIED + PUBLIC FLIP IN PROGRESS (2026-05-19). All 39 tasks T-01~T-39 + 5-fix polish + AC-α-8 history sweep complete. Tier-reviewer subagent 3-round CONFIRM (REFUTE → fix → CONFIRM → polish → CONFIRM 7/7). User explicit ★★★ promotion received 2026-05-19. Origin main HEAD = a646fd4 (history-rewritten, `.security_telemetry.jsonl` literal removed from 56-commit history).**
+**Next: Step 5 repo PUBLIC flip (requires user direct CLI for `gh repo edit --visibility public` per same destructive-op pattern as force-push) → Step 6 post-flip security feature verify.**
 
 ## Recent accepted stages
 
