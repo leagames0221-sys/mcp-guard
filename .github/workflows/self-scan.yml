@@ -21,6 +21,9 @@ on:
       - 'src/**'
       - 'tests/fixtures/benchmark/**'
       - 'scripts/**'
+      - 'tsconfig*.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/self-scan.yml'
   push:
     branches: [main]
@@ -28,6 +31,9 @@ on:
       - 'src/**'
       - 'tests/fixtures/benchmark/**'
       - 'scripts/**'
+      - 'tsconfig*.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/self-scan.yml'
   workflow_dispatch: {}
   schedule:
