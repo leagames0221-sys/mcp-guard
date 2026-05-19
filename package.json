@@ -30,6 +30,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "audit": "pnpm audit --audit-level=high",
+    "bench": "tsx scripts/benchmark.ts",
     "mask:check": "tsx scripts/precommit_mask_check.ts",
     "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
