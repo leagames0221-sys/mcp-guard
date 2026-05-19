@@ -55,7 +55,7 @@ Tier 1 default を継承 + 下記 addition:
 - ADR-based 設計判断記録 (`docs/adr/NNNN-*.md`)
 - LICENSE = MIT 維持
 - 外部 OSS adopt 前に security audit gate 必須 (Scorecard ≥ 7 + signed release + dep tree audit + user 承認)
-- **LLM 使用時 default = Ollama local** (consumer laptop 完走前提、 model = qwen2.5 系 / llama3.x 系)
+- **LLM 使用時 default = Ollama local** (consumer laptop 完走前提、 primary model = `gemma3:4b` per ADR-0003 §1; optional alternatives = `qwen2.5:7b` / `llama3.1:8b` install on demand)
 - **mock mode (LLM 不使用、 pure static analysis のみ) を default fallback として常時 available**
 - 全 CI workflow が GitHub Actions free tier (月 2,000 分) 内で完走することを literal verify
 
