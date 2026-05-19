@@ -115,7 +115,7 @@ high-severity threshold.
 - [docs/owasp-llm-top10-mapping.md](docs/owasp-llm-top10-mapping.md) — OWASP LLM01–10 → probe + detector mapping
 - [docs/PROVIDERS.md](docs/PROVIDERS.md) — LLM provider matrix + paid-API 6-layer defense
 - [SECURITY.md](SECURITY.md) — supported versions, report channels, hardening posture
-- [docs/adr/](docs/adr/) — architecture decision records (5 entries)
+- [docs/adr/](docs/adr/) — architecture decision records (6 entries)
 
 ## Stack
 

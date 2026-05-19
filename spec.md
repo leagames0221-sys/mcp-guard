@@ -2,7 +2,7 @@
 
 > **Spec status**: Stage 1 Discovery + Stage 2 Requirements (EARS) + Stage 3 Design v2 (with independent-review gaps integrated) all **Accepted**.
 > Canonical decision record: [docs/adr/0003-stack-adoption-and-design.md](docs/adr/0003-stack-adoption-and-design.md).
-> **Phase 1 implementation feature-complete** (2026-05-19, T-01 ~ T-39 全 39 task landed on main, 673 vitest specs PASS, tsc strict green, CI ci.yml 3-OS matrix green, ADR count 6). Phase α exit gate independently verified 7/7 PASS by tier-reviewer subagent (round 2 on commit `f7c2004`); final ★★ → ★★★ promotion pending user gate per rubric § user-gate clause.
+> **Phase 1 implementation feature-complete** (2026-05-19, T-01 ~ T-39 全 39 task landed on main, 696 vitest specs PASS, tsc strict green, CI ci.yml 3-OS matrix green, ADR count 6, project coverage 98.14%). Phase α exit gate independently verified 7/7 PASS by tier-reviewer subagent (round 3 on commit `ae87197`); final ★★ → ★★★ promotion pending user gate per rubric § user-gate clause.
 
 ## 機能 list
 
