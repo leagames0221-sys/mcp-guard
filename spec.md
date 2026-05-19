@@ -2,7 +2,7 @@
 
 > **Spec status**: Stage 1 Discovery + Stage 2 Requirements (EARS) + Stage 3 Design v2 (with independent-review gaps integrated) all **Accepted**.
 > Canonical decision record: [docs/adr/0003-stack-adoption-and-design.md](docs/adr/0003-stack-adoption-and-design.md).
-> **Phase 1 implementation feature-complete** (2026-05-19, T-01 ~ T-39 全 39 task landed on main, 696 vitest specs PASS, tsc strict green, CI ci.yml 3-OS matrix green, ADR count 6, project coverage 98.14%). Phase α exit gate independently verified 7/7 PASS by tier-reviewer subagent (round 3 on commit `ae87197`); final ★★ → ★★★ promotion pending user gate per rubric § user-gate clause.
+> **Phase 1 + Phase α exit gate complete** (2026-05-19, T-01 ~ T-39 全 39 task landed on main, 696 vitest specs PASS across 37 files, tsc strict green, CI ci.yml 3-OS matrix + self-scan + drift-check 全 green, ADR count 6, project coverage 98.14%). Phase α exit gate independently verified 7/7 PASS by tier-reviewer subagent across 4 rounds (round 1 REFUTE on `5fc015e` → fix → round 2 CONFIRM → round 3 CONFIRM on `ae87197` → round 4 CONFIRM on `6561308`). AC-α-1..AC-α-8 全 literal verified (incl. AC-α-6 SARIF GitHub Code Scanning UI ingestion + AC-α-8 history sweep). Repo PUBLIC at github.com/leagames0221-sys/mcp-guard, branch-protected, ★★★ user-promoted 2026-05-19.
 
 ## 機能 list
 
