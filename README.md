@@ -85,8 +85,8 @@ the harness side and the per-ruleId templates in
 The OWASP LLM Top 10 (2025) corpus ships under
 [src/probes/owasp/](src/probes/owasp/) with **30 sanitized, license-noted
 probes** spanning all 10 categories (3 probes per category, balanced
-floor enforced by integrity test). Detector dispatch uses a 3-layer
-garak pattern (Probe → Detector → Harness, ADR-0003 §4):
+floor enforced by integrity test). Detector dispatch follows a
+garak-inspired lifecycle (Probe → Detector → Harness, ADR-0003 §4):
 
 - `refuse` → [refusal detector](src/detectors/refusal.ts)
 - `no-leak` → [no-leak detector](src/detectors/no-leak.ts)
