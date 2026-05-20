@@ -4,8 +4,11 @@
 
 ## Current phase
 
-**Phase 1 — ★★★ STRONG HIRE VERIFIED + PUBLIC FLIP IN PROGRESS (2026-05-19). All 39 tasks T-01~T-39 + 5-fix polish + AC-α-8 history sweep complete. Tier-reviewer subagent 3-round CONFIRM (REFUTE → fix → CONFIRM → polish → CONFIRM 7/7). User explicit ★★★ promotion received 2026-05-19. Origin main HEAD = a646fd4 (history-rewritten, `.security_telemetry.jsonl` literal removed from 56-commit history).**
-**Next: Step 5 repo PUBLIC flip (requires user direct CLI for `gh repo edit --visibility public` per same destructive-op pattern as force-push) → Step 6 post-flip security feature verify.**
+**Phase 1 — ★★★ STRONG HIRE COMPLETE + PUBLIC LIVE + PORTFOLIO LISTED (2026-05-19 promotion, 2026-05-20 independent audit re-verified).** All 39 tasks T-01~T-39 + 5-fix polish + 7-issue post-flip fix + AC-α-1..AC-α-8 全件 literal landed. Tier-reviewer subagent 4-round CONFIRM chain (REFUTE on 5fc015e → fix → CONFIRM f7c2004 → CONFIRM ae87197 → CONFIRM 6561308 + post-PUBLIC-flip re-verify). User explicit ★★★ promotion 2026-05-19.
+**Origin main HEAD = `d43bdf1`** (2026-05-19 20:33 +0900, history-rewritten 2026-05-19, `.security_telemetry.jsonl` literal removed from 56-commit history per AC-α-8 sweep).
+**Repo PUBLIC** at https://github.com/leagames0221-sys/mcp-guard (MIT license, main branch-protected with 3-OS required status checks, 3 GitHub security features ON).
+**696 vitest specs PASS / 37 files / coverage 98.14%** at HEAD d43bdf1. Portfolio listing materials updated to include mcp-guard.
+**Next: Phase 1 complete, no blocker. Optional minor improvements (ship 後 OK): CHANGELOG.md / NOTICE.md / CONTRIBUTING.md. Phase β = sbom-pilot (separate sibling repo, in progress).**
 
 ## Recent accepted stages
 
