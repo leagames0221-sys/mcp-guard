@@ -7,7 +7,7 @@
 
 - 案件: `mcp-guard` — MCP server security scanner + LLM prompt injection defense lab
 - 目的: 個人開発者 / SMB 向け defensive-first CLI tool として portfolio に追加、 security 受託案件への entry point
-- scope: Phase α (本 repo 単独 ★★★ verify) → 後続 Phase β (sbom-pilot、 別 repo) の sequential
+- scope: Phase α (本 repo 単独 verify) → 後続 Phase β (sbom-pilot、 別 repo) の sequential
 - target audience: MCP server を deploy する個人開発者 + SMB
 
 ## Repo public framing
