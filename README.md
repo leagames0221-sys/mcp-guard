@@ -6,6 +6,39 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/leagames0221-sys/mcp-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/leagames0221-sys/mcp-guard/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](https://nodejs.org/)
+[![Constraint: zero credit card](https://img.shields.io/badge/Constraint-zero%20credit%20card-blue)](#selected-under)
+[![Constraint: local LLM (default)](https://img.shields.io/badge/Constraint-local%20LLM%20%28default%29-blue)](#selected-under)
+[![Constraint: free / OSS only](https://img.shields.io/badge/Constraint-free%20%2F%20OSS%20only-blue)](#selected-under)
+[![Constraint: security defense-in-depth](https://img.shields.io/badge/Constraint-security%20defense--in--depth-blue)](#selected-under)
+
+## Selected under
+
+> **The 4-constraint set** (applied across the full portfolio — verified consistent across all 11 portfolio repos):
+>
+> 1. **Zero credit card** — no paid API / cloud service required for the default path. A reviewer can clone, install, and run with $0 spend and no payment method on file.
+> 2. **Local LLM (default)** — when an LLM is involved, the default path is local (Ollama / similar) or deterministic mock. Paid cloud LLM is opt-in via env var, never default.
+> 3. **Free / OSS only** — every runtime dependency is permissively-licensed open source (MIT / Apache-2.0 / BSD-3); no proprietary SDK at build time.
+> 4. **Security defense-in-depth** — secrets-scan CI + `.gitignore` hardening, encrypted-at-rest where PII is involved, append-only audit logging where applicable, dep-vuln gating (`pip-audit` / `pnpm audit`), paid-API constructor gate where applicable.
+
+This repo specifically demonstrates: MCP server scanner + prompt-injection harness with Ollama (`gemma3:4b`) default, deterministic mock fallback in CI, and paid-LLM env-var-gated behind a 6-layer defense (constructor gate + pre-flight reserve + key non-leak + CI auto-call ban + default mock + zero-CC service-only).
+
+**Plain-language summary** *(for non-specialist readers)*
+
+- **MCP (Model Context Protocol)** — an emerging standard that lets AI
+  agents call external tools and data sources (Anthropic-originated, now
+  multi-vendor). A misconfigured MCP server can leak secrets, run
+  injected commands, or be used as an SSRF pivot.
+- **Prompt-injection harness** — a battery of crafted inputs that try to
+  jailbreak a language model into leaking data or ignoring its
+  instructions. We ship a sanitized OWASP LLM Top 10 (2025) corpus and
+  measure refusal / no-leak / safe-completion rates against your
+  local LLM.
+- **Remediation engine** — for each finding, emits a suggested config
+  patch plus curated OWASP / CWE references, so a developer can fix
+  the issue without re-reading the underlying standard.
+- **Why it matters** — MCP is becoming the de-facto integration layer
+  for AI tooling, but its security posture lags behind. `mcp-guard`
+  catches the most common deployment mistakes before an attacker does.
 
 ## What it does
 
