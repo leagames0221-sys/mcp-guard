@@ -1,0 +1,17 @@
+Usage: mcp-guard [options] [command]
+
+Defensive-first CLI for MCP server config scanning and LLM prompt-injection
+red-team harness.
+
+Options:
+  -V, --version            Print mcp-guard version and exit.
+  -h, --help               display help for command
+
+Commands:
+  scan [options] <config>  Scan a .mcp.json config file for SSRF,
+                           command-injection, auth-gap, and supply-chain risks.
+  inject [options]         Run the OWASP LLM Top 10 prompt-injection harness
+                           against a registered LLM provider (default: mock).
+  suggest <report>         Read a prior scan report.json and emit per-finding
+                           remediation suggestions.
+  help [command]           display help for command

@@ -1,0 +1,43 @@
+{
+  "schema": "mcp-guard-suggest-output@1",
+  "usedLlm": false,
+  "count": 3,
+  "remediations": [
+    {
+      "findingId": "df4b130c992bdb3b",
+      "ruleId": "CMDINJ-CURL-PIPE-SHELL",
+      "category": "command-injection",
+      "severity": "critical",
+      "suggested_patch": "Replace curl ... | sh / wget ... | bash patterns with a fetch-verify-execute split: download to a temp file, verify a published checksum or signature, then execute the local file. Never stream remote content directly into an interpreter.",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/94.html",
+        "https://owasp.org/Top10/A03_2021-Injection/"
+      ],
+      "source": "template"
+    },
+    {
+      "findingId": "3ff5dd0fc80f1400",
+      "ruleId": "CMDINJ-SHELL-INTERPRETER",
+      "category": "command-injection",
+      "severity": "high",
+      "suggested_patch": "Replace shell-wrapped invocations (sh -c / bash -c / cmd /c / powershell -Command) with a direct argv array. Pass arguments as separate elements so the kernel exec path bypasses the shell entirely.",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/77.html",
+        "https://owasp.org/Top10/A03_2021-Injection/"
+      ],
+      "source": "template"
+    },
+    {
+      "findingId": "18f6d3ef84818a90",
+      "ruleId": "CMDINJ-SHELL-METACHAR",
+      "category": "command-injection",
+      "severity": "medium",
+      "suggested_patch": "Remove shell metacharacters (; | & $ ` < > newline) from the command + args. If the operator intended a pipeline, restructure as two argv invocations connected by an in-process stream rather than a shell pipe.",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/77.html",
+        "https://owasp.org/Top10/A03_2021-Injection/"
+      ],
+      "source": "template"
+    }
+  ]
+}

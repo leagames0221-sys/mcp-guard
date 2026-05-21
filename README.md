@@ -98,6 +98,41 @@ node dist/cli/index.js inject --severity-floor high
 node dist/cli/index.js suggest report.json
 ```
 
+### Demo output
+
+The four subcommands above produce the following terminal output against
+the `cmdinj-positive-curl-pipe-shell` fixture (synthetic MCP config with
+a `curl|sh` supply-chain primitive). Rendered from raw stdout/stderr by
+`docs/demo/cli/render.py` (Pillow + MS Gothic, no network egress).
+
+| Command | Screenshot |
+|---|---|
+| `mcp-guard --help` | [help.png](docs/demo/cli/help.png) |
+| `mcp-guard scan <fixture>` | [scan.png](docs/demo/cli/scan.png) |
+| `mcp-guard inject --severity-floor high` | [inject.png](docs/demo/cli/inject.png) |
+| `mcp-guard suggest report.json` | [suggest.png](docs/demo/cli/suggest.png) |
+
+The `scan` output shows 3 findings (1 CRITICAL `CMDINJ-CURL-PIPE-SHELL`
++ 1 HIGH `CMDINJ-SHELL-INTERPRETER` + 1 MEDIUM `CMDINJ-SHELL-METACHAR`).
+The `inject` harness runs against the bundled OWASP LLM01–10 probe
+corpus (30 probes default). The `suggest` output emits per-finding
+remediation patches via the mock LLM provider; switch to Ollama with
+`MCP_GUARD_LLM_PROVIDER=ollama` + `OLLAMA_MODEL=gemma3:4b`.
+
+To regenerate the screenshots locally:
+
+```bash
+mkdir -p docs/demo/cli
+NO_COLOR=1 node dist/cli/index.js --help > docs/demo/cli/help.txt 2>&1
+NO_COLOR=1 node dist/cli/index.js scan tests/fixtures/mcp/cmdinj-positive-curl-pipe-shell.json > docs/demo/cli/scan.txt 2>&1
+NO_COLOR=1 node dist/cli/index.js scan tests/fixtures/mcp/cmdinj-positive-curl-pipe-shell.json --format json --output _tmp_report.json > /dev/null 2>&1
+NO_COLOR=1 node dist/cli/index.js suggest _tmp_report.json > docs/demo/cli/suggest.txt 2>&1
+NO_COLOR=1 node dist/cli/index.js inject --severity-floor high > docs/demo/cli/inject.txt 2>&1
+
+# Render PNGs (system Python >= 3.10 + Pillow)
+python docs/demo/cli/render.py
+```
+
 ## Scanner coverage (F-001)
 
 | Category | Rules | Severity | Source |

@@ -1,0 +1,13 @@
+mcp-guard 0.1.0 — target: C:\Users\admin\Projects\mcp-guard\tests\fixtures\mcp\cmdinj-positive-curl-pipe-shell.json
+generated: 2026-05-21T17:19:01.264Z
+3 findings (critical=1 high=1 medium=1 low=0)
+
+[CRITICAL] CMDINJ-CURL-PIPE-SHELL (df4b130c992bdb3b)
+  command-line contains `curl|wget … | sh|bash|…` pattern — direct RCE supply-chain primitive (no signature, no checksum, attacker-controlled HTTP body executed verbatim)
+  at C:\Users\admin\Projects\mcp-guard\tests\fixtures\mcp\cmdinj-positive-curl-pipe-shell.json
+[HIGH] CMDINJ-SHELL-INTERPRETER (3ff5dd0fc80f1400)
+  command "sh" is a shell interpreter invoked with eval flag "-c" — argument body is executed as shell code (any future config edit becomes RCE)
+  at C:\Users\admin\Projects\mcp-guard\tests\fixtures\mcp\cmdinj-positive-curl-pipe-shell.json
+[MEDIUM] CMDINJ-SHELL-METACHAR (18f6d3ef84818a90)
+  args[1] contains shell metacharacter(s) — exploitable to command injection when the MCP runtime spawns through a shell (common on Windows + shell:true)
+  at C:\Users\admin\Projects\mcp-guard\tests\fixtures\mcp\cmdinj-positive-curl-pipe-shell.json
