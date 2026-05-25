@@ -33,6 +33,15 @@ jobs:
     name: mcp-guard scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # This file is a consumer-facing TEMPLATE — meant to be copied
+    # verbatim into downstream repos that install mcp-guard from npm.
+    # The source repo itself does NOT publish to npm under this name
+    # (the npm name `mcp-guard` is currently squatted by an unrelated
+    # project), and self-scanning is handled by `self-scan.yml` which
+    # builds from source. Skip the template job when it runs against
+    # the source repo so consumers still see a working example file
+    # without breaking source-repo CI on every PR.
+    if: github.repository != 'leagames0221-sys/mcp-guard'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
