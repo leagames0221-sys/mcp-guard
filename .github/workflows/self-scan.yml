@@ -85,7 +85,7 @@ jobs:
             --fail-on-severity critical
 
       - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: mcp-guard-self-scan.sarif
           category: mcp-guard-self-scan
