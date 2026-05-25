@@ -11,7 +11,7 @@
 **Changed**:
 
 - Created PJ root at `C:/Users/admin/Projects/mcp-guard`
-- Wrote 13 scaffold files: README, LICENSE, .gitignore, CLAUDE.md, spec.md, .claude/{settings.json, internal_notes.md, memory_bank/×5}, .github/{workflows/×2, dependabot.yml}, .pre-commit-config.yaml, docs/adr/0001-...
+- Wrote 13 scaffold files: README, LICENSE, .gitignore, CLAUDE.md, spec.md, .claude/{settings.json, memory_bank/×5}, .github/{workflows/×2, dependabot.yml}, .pre-commit-config.yaml, docs/adr/0001-...
 - Registered in internal PJ registry
 - Initialized git, created GitHub PRIVATE repo `leagames0221-sys/mcp-guard`, pushed initial commit
 
@@ -2025,7 +2025,7 @@ unchanged at 5. No new dependencies.
     docs/PROVIDERS.md + README refresh (AC-alpha-3).
   - T-38 benchmark + Golf Scanner audit (ADR-0004 lands here,
     AC-alpha-5 + AC-alpha-3).
-  - T-39 independent verify via tier-reviewer subagent against
+  - T-39 independent verify via tier-reviewer against
     tool_tier_rubric.md v2.0 - 7/7 binary criteria PASS literal
     (AC-alpha-7) + user gate.
 
@@ -2087,7 +2087,7 @@ literally satisfied with machine-checkable evidence on main HEAD.
     Documents what is referenced (7-IDE coverage surface, offline-
     vs-online check split as design ideas) vs explicitly NOT adopted
     (0-100 risk-score concept, which would muddy CI branching).
-- **T-39** independent tier-reviewer subagent verify (AC-alpha-7).
+- **T-39** independent tier-reviewer verify (AC-alpha-7).
   Two rounds executed per Anthropic Writer/Reviewer pattern:
   - **Round 1** on commit 5fc015e: subagent REFUTE with 6/7 PASS.
     Criterion 1 (CI green) FAIL: scripts/benchmark.ts:18 carried an
@@ -2162,7 +2162,7 @@ sweep) is destructive op, user-gated.
 **Next**: user gate decision on tier promotion. AI does NOT self-
 promote per rubric. After user OK, post-promotion work items:
 - Update sibling portfolio table memory entry with mcp-guard row.
-- Update portfolio HTML / channel B intro email template with
+- Update portfolio HTML / intro email template with
   mcp-guard.
 - Consider repo PUBLIC flip (AC-alpha-6 + AC-alpha-8) on user gate.
 - Phase beta scope (sbom-pilot or sibling MCP-security repo).
