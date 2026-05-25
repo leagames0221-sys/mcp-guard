@@ -43,10 +43,10 @@ jobs:
           node-version: '20'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           # version sourced from package.json "packageManager" field
-          # (pnpm/action-setup@v4 errors on multi-source mismatch).
+          # (pnpm/action-setup@v6 errors on multi-source mismatch).
           run_install: false
 
       - name: Install dependencies
