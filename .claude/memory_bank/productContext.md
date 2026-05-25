@@ -27,6 +27,5 @@ In 2026, MCP (Model Context Protocol) has become the primary integration layer f
 
 ## Success metrics (Phase α)
 
-- 7/7 binary criteria in `tool_tier_rubric.md` v2.0 PASS
 - ≥ 1 real-world MCP server example successfully scanned with reported TP/FP rate
-- GitHub stars ≥ 50 within 30 days of PUBLIC flip (★★ stretch, not gating)
+- GitHub stars ≥ 50 within 30 days of PUBLIC flip (stretch, not gating)
